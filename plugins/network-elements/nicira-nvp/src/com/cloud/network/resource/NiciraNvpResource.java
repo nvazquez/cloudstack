@@ -65,6 +65,7 @@ import com.cloud.host.Host;
 import com.cloud.host.Host.Type;
 import com.cloud.network.nicira.ControlClusterStatus;
 import com.cloud.network.nicira.ControlClusterStatus.ClusterRoleConfig;
+import com.cloud.network.nicira.ControlClusterStatus.Stats;
 import com.cloud.network.nicira.DestinationNatRule;
 import com.cloud.network.nicira.L3GatewayAttachment;
 import com.cloud.network.nicira.LogicalRouter;
@@ -90,8 +91,6 @@ public class NiciraNvpResource implements ServerResource {
 
     private static final Logger s_logger = Logger.getLogger(NiciraNvpResource.class);
 
-    private static Integer apiProviderId = null;
-    private static final int API_PROVIDER_ID_NOT_PRESENT = -1;
     private static String apiProviderMajorityVersion = null;
     private static final String API_MAJORITY_VERSION_NOT_PRESENT = "";
 
@@ -101,6 +100,10 @@ public class NiciraNvpResource implements ServerResource {
     private int numRetries;
 
     private NiciraNvpApi niciraNvpApi;
+
+    public static String getApiProviderMajorityVersion() {
+        return apiProviderMajorityVersion;
+    }
 
     protected NiciraNvpApi createNiciraNvpApi() {
         return new NiciraNvpApi();
@@ -189,13 +192,9 @@ public class NiciraNvpResource implements ServerResource {
             //------------------------------------------------GET API_PROVIDER MAJORITY VERSION
             ClusterRoleConfig[] configuredRoles = ccs.getConfiguredRoles();
             if (configuredRoles != null){
-                if (apiProviderId != null){
-                    if (! apiProviderId.equals(API_PROVIDER_ID_NOT_PRESENT)){
-                        apiProviderMajorityVersion = configuredRoles[apiProviderId].getMajorityVersion();
-                    }
-                }
-                else {
-                    apiProviderMajorityVersion = searchApiProvider(configuredRoles) ? configuredRoles[apiProviderId].getMajorityVersion()
+                if (apiProviderMajorityVersion == null) {
+                    int apiProviderId = searchApiProvider(configuredRoles);
+                    apiProviderMajorityVersion = (apiProviderId != -1) ? configuredRoles[apiProviderId].getMajorityVersion()
                             : API_MAJORITY_VERSION_NOT_PRESENT;
                 }
             }
@@ -211,18 +210,17 @@ public class NiciraNvpResource implements ServerResource {
         return new PingCommand(Host.Type.L2Networking, id);
     }
 
-    private boolean searchApiProvider(ClusterRoleConfig[] configuredRoles) {
+    private int searchApiProvider(ClusterRoleConfig[] configuredRoles) {
         int length = configuredRoles.length;
         for (int i = 0; i < length; i++) {
             if (! configuredRoles[i].getRole().equals("api_provider")){
                 continue;
             }
             else {
-                apiProviderId = i;
-                return true;
+                return i;
             }
         }
-        return false;
+        return -1;
     }
 
     @Override
