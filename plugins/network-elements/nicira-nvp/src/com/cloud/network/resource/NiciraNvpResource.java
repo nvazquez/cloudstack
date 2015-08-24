@@ -65,7 +65,6 @@ import com.cloud.host.Host;
 import com.cloud.host.Host.Type;
 import com.cloud.network.nicira.ControlClusterStatus;
 import com.cloud.network.nicira.ControlClusterStatus.ClusterRoleConfig;
-import com.cloud.network.nicira.ControlClusterStatus.Stats;
 import com.cloud.network.nicira.DestinationNatRule;
 import com.cloud.network.nicira.L3GatewayAttachment;
 import com.cloud.network.nicira.LogicalRouter;
