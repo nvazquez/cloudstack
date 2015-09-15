@@ -954,6 +954,9 @@ public class HypervisorHostHelper {
         boolean bWaitPortGroupReady = false;
         if (broadcastDomainType == BroadcastDomainType.Lswitch) {
             if (!hostMo.hasPortGroup(vSwitch, networkName)) {
+                s_logger.info("NSX-PLUGIN-TEST: vSwitch=" + hostMo.toString());
+                s_logger.info("NSX-PLUGIN-TEST: networkName=" + hostMo.toString());
+
                 createNvpPortGroup(hostMo, vSwitch, networkName, shapingPolicy);
 
                 bWaitPortGroupReady = true;
