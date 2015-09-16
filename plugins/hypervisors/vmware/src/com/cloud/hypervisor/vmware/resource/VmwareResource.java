@@ -5043,6 +5043,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
             context = VmwareContextFactory.getContext(_vCenterAddress, _username, _password);
             s_serviceContext.set(context);
         } catch (Exception e) {
+            s_logger.error("NSX PLUGIN: username="+_username + " - password=" + _password);
             s_logger.error("Unable to connect to vSphere server: " + _vCenterAddress, e);
             throw new CloudRuntimeException("Unable to connect to vSphere server: " + _vCenterAddress);
         }
