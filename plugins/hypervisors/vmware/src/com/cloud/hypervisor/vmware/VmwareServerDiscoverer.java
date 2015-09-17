@@ -53,6 +53,7 @@ import com.cloud.resource.DiscovererBase;
 import com.cloud.resource.ResourceStateAdapter;
 import com.cloud.resource.ServerResource;
 import com.cloud.resource.UnableDeleteHostException;
+import com.cloud.serializer.GsonHelper;
 import com.cloud.storage.Storage.ImageFormat;
 import com.cloud.storage.Storage.TemplateType;
 import com.cloud.storage.VMTemplateVO;
@@ -60,14 +61,17 @@ import com.cloud.storage.dao.VMTemplateDao;
 import com.cloud.user.Account;
 import com.cloud.utils.Pair;
 import com.cloud.utils.UriUtils;
+import com.google.gson.Gson;
 import com.vmware.vim25.ClusterDasConfigInfo;
 import com.vmware.vim25.ManagedObjectReference;
+
 import org.apache.cloudstack.api.ApiConstants;
 import org.apache.log4j.Logger;
 
 import javax.ejb.Local;
 import javax.inject.Inject;
 import javax.naming.ConfigurationException;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLDecoder;
@@ -742,6 +746,8 @@ public class VmwareServerDiscoverer extends DiscovererBase implements Discoverer
 
             HashMap<String, Object> params = buildConfigParams(host);
             try {
+                Gson _gson = GsonHelper.getGsonLogger();
+                s_logger.info("NSX PLUGIN RELOAD RESOURCE: hostName=" + host.getName() + " - params=" + _gson.toJson(params));
                 resource.configure(host.getName(), params);
             } catch (ConfigurationException e) {
                 s_logger.warn("Unable to configure resource due to " + e.getMessage());
