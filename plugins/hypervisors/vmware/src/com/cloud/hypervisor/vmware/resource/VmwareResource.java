@@ -264,6 +264,7 @@ import com.cloud.utils.ExecutionResult;
 import com.cloud.utils.NumbersUtil;
 import com.cloud.utils.Pair;
 import com.cloud.utils.Ternary;
+import com.cloud.utils.crypt.DBEncryptionUtil;
 import com.cloud.utils.db.DB;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.utils.exception.ExceptionUtil;
@@ -5043,7 +5044,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
             context = VmwareContextFactory.getContext(_vCenterAddress, _username, _password);
             s_serviceContext.set(context);
         } catch (Exception e) {
-            s_logger.error("NSX PLUGIN: username="+_username + " - password=" + _password);
+            s_logger.error("NSX PLUGIN: username="+_username + " - password=" + _password + " - decrypted=" + DBEncryptionUtil.decrypt(_password));
             s_logger.error("Unable to connect to vSphere server: " + _vCenterAddress, e);
             throw new CloudRuntimeException("Unable to connect to vSphere server: " + _vCenterAddress);
         }
