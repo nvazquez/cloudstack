@@ -195,9 +195,9 @@ public class NiciraNvpResource implements ServerResource {
                     int apiProviderId = searchApiProvider(configuredRoles);
                     apiProviderMajorityVersion = (apiProviderId != -1) ? configuredRoles[apiProviderId].getMajorityVersion()
                             : API_MAJORITY_VERSION_NOT_PRESENT;
-                    s_logger.info("NSX VERSION: " + apiProviderMajorityVersion);
                 }
             }
+            s_logger.info("NSX VERSION: " + apiProviderMajorityVersion);
             //------------------------------------------------------------------------------------
             if (!"stable".equals(ccs.getClusterStatus())) {
                 s_logger.error("ControlCluster state is not stable: " + ccs.getClusterStatus());
