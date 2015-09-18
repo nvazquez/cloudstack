@@ -64,6 +64,7 @@ import com.cloud.agent.api.to.StaticNatRuleTO;
 import com.cloud.host.Host;
 import com.cloud.host.Host.Type;
 import com.cloud.network.nicira.ControlClusterStatus;
+import com.cloud.network.nicira.ControlClusterStatus.ClusterRoleConfig;
 import com.cloud.network.nicira.DestinationNatRule;
 import com.cloud.network.nicira.L3GatewayAttachment;
 import com.cloud.network.nicira.LogicalRouter;
@@ -87,12 +88,19 @@ import com.cloud.resource.ServerResource;
 public class NiciraNvpResource implements ServerResource {
     private static final int NAME_MAX_LEN = 40;
 
-    private static final Logger s_logger = Logger.getLogger(NiciraNvpResource.class);
+    private static final java.util.logging.Logger s_logger = Logger.getLogger(NiciraNvpResource.class);
+
+    private static String apiProviderMajorityVersion = null;
+    private static final String API_MAJORITY_VERSION_NOT_PRESENT = "";
 
     private String name;
     private String guid;
     private String zoneId;
     private int numRetries;
+
+    public static String getApiProviderMajorityVersion() {
+        return apiProviderMajorityVersion;
+    }
 
     private NiciraNvpApi niciraNvpApi;
 
@@ -180,6 +188,17 @@ public class NiciraNvpResource implements ServerResource {
     public PingCommand getCurrentStatus(final long id) {
         try {
             ControlClusterStatus ccs = niciraNvpApi.getControlClusterStatus();
+            //------------------------------------------------GET API_PROVIDER MAJORITY VERSION
+            ClusterRoleConfig[] configuredRoles = ccs.getConfiguredRoles();
+            if (configuredRoles != null){
+                if (apiProviderMajorityVersion == null) {
+                    int apiProviderId = searchApiProvider(configuredRoles);
+                    apiProviderMajorityVersion = (apiProviderId != -1) ? configuredRoles[apiProviderId].getMajorityVersion()
+                            : API_MAJORITY_VERSION_NOT_PRESENT;
+                    s_logger.info("NSX VERSION: " + apiProviderMajorityVersion);
+                }
+            }
+            //------------------------------------------------------------------------------------
             if (!"stable".equals(ccs.getClusterStatus())) {
                 s_logger.error("ControlCluster state is not stable: " + ccs.getClusterStatus());
                 return null;
@@ -189,6 +208,19 @@ public class NiciraNvpResource implements ServerResource {
             return null;
         }
         return new PingCommand(Host.Type.L2Networking, id);
+    }
+
+    private int searchApiProvider(ClusterRoleConfig[] configuredRoles) {
+        int length = configuredRoles.length;
+        for (int i = 0; i < length; i++) {
+            if (! configuredRoles[i].getRole().equals("api_provider")){
+                continue;
+            }
+            else {
+                return i;
+            }
+        }
+        return -1;
     }
 
     @Override
