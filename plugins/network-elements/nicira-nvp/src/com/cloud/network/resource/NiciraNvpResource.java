@@ -88,7 +88,7 @@ import com.cloud.resource.ServerResource;
 public class NiciraNvpResource implements ServerResource {
     private static final int NAME_MAX_LEN = 40;
 
-    private static final java.util.logging.Logger s_logger = Logger.getLogger(NiciraNvpResource.class);
+    private static final Logger s_logger = Logger.getLogger(NiciraNvpResource.class);
 
     private static String apiProviderMajorityVersion = null;
     private static final String API_MAJORITY_VERSION_NOT_PRESENT = "";
