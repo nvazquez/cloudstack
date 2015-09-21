@@ -87,7 +87,7 @@ import com.vmware.vim25.VmwareDistributedVirtualSwitchVlanIdSpec;
 import com.vmware.vim25.VmwareDistributedVirtualSwitchVlanSpec;
 
 public class HypervisorHostHelper {
-    private static final java.util.logging.Logger s_logger = Logger.getLogger(HypervisorHostHelper.class);
+    private static final Logger s_logger = Logger.getLogger(HypervisorHostHelper.class);
     private static final int DEFAULT_LOCK_TIMEOUT_SECONDS = 600;
     private static final String s_policyNamePrefix = "cloud.policy.";
 
