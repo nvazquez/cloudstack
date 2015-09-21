@@ -68,7 +68,7 @@ import com.cloud.hypervisor.vmware.util.VmwareHelper;
 import com.cloud.utils.Pair;
 
 public class HostMO extends BaseMO implements VmwareHypervisorHost {
-    private static final Logger s_logger = Logger.getLogger(HostMO.class);
+    private static final java.util.logging.Logger s_logger = Logger.getLogger(HostMO.class);
     Map<String, VirtualMachineMO> _vmCache = new HashMap<String, VirtualMachineMO>();
 
     //Map<String, String> _vmInternalNameMapCache = new HashMap<String, String>();
@@ -434,6 +434,7 @@ public class HostMO extends BaseMO implements VmwareHypervisorHost {
 
         List<ObjectContent> ocs = _context.getService().retrieveProperties(_context.getPropertyCollector(), pfSpecArr);
 
+        s_logger.info("[NSX_PLUGIN_LOG] ocs=" + new Gson().toJson(ocs));
         if (ocs != null) {
             for (ObjectContent oc : ocs) {
                 List<DynamicProperty> props = oc.getPropSet();

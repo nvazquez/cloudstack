@@ -43,6 +43,7 @@ import com.cloud.utils.cisco.n1kv.vsm.VsmCommand.SwitchPortMode;
 import com.cloud.utils.db.GlobalLock;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.utils.net.NetUtils;
+import com.google.gson.Gson;
 import com.vmware.vim25.AlreadyExistsFaultMsg;
 import com.vmware.vim25.BoolPolicy;
 import com.vmware.vim25.CustomFieldStringValue;
@@ -86,7 +87,7 @@ import com.vmware.vim25.VmwareDistributedVirtualSwitchVlanIdSpec;
 import com.vmware.vim25.VmwareDistributedVirtualSwitchVlanSpec;
 
 public class HypervisorHostHelper {
-    private static final Logger s_logger = Logger.getLogger(HypervisorHostHelper.class);
+    private static final java.util.logging.Logger s_logger = Logger.getLogger(HypervisorHostHelper.class);
     private static final int DEFAULT_LOCK_TIMEOUT_SECONDS = 600;
     private static final String s_policyNamePrefix = "cloud.policy.";
 
@@ -953,6 +954,7 @@ public class HypervisorHostHelper {
 
         boolean bWaitPortGroupReady = false;
         if (broadcastDomainType == BroadcastDomainType.Lswitch) {
+            s_logger.info("[NSX_PLUGIN_LOG] check if hostMO has port group with name " + networkName);
             if (!hostMo.hasPortGroup(vSwitch, networkName)) {
                 createNvpPortGroup(hostMo, vSwitch, networkName, shapingPolicy);
 
@@ -974,8 +976,9 @@ public class HypervisorHostHelper {
         }
 
         ManagedObjectReference morNetwork;
-        if (bWaitPortGroupReady)
+        if (bWaitPortGroupReady){
             morNetwork = waitForNetworkReady(hostMo, networkName, timeOutMs);
+        s_logger.info("[NSX_PLUGIN_LOG] network ready: morNetwork=" + new Gson().toJson(morNetwork));}
         else
             morNetwork = hostMo.getNetworkMor(networkName);
         if (morNetwork == null) {
@@ -1075,6 +1078,7 @@ public class HypervisorHostHelper {
          */
         String vSwitchName = vSwitch.getName();
 
+        s_logger.info("[NSX_PLUGIN_LOG] createNvpPortGroup: hostMO=" + new Gson().toJson(hostMo));
         // Find all vlanids that we have in use
         List<Integer> usedVlans = new ArrayList<Integer>();
         for (HostPortGroup pg : hostMo.getHostNetworkInfo().getPortgroup()) {
@@ -1101,6 +1105,7 @@ public class HypervisorHostHelper {
         secPolicy.setMacChanges(Boolean.FALSE);
 
         // Create a portgroup with the uuid of the nic and the vlanid found above
+        s_logger.info("[NSX_PLUGIN_LOG] createPortGroup: vlanid=" + String.valueOf(nvpVlanId));
         hostMo.createPortGroup(vSwitch, networkName, nvpVlanId, secPolicy, shapingPolicy);
     }
 

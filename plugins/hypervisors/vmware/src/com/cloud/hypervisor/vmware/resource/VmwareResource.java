@@ -1683,6 +1683,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
                 boolean configureVServiceInNexus = (nicTo.getType() == TrafficType.Guest) && (vmSpec.getDetails().containsKey("ConfigureVServiceInNexus"));
                 VirtualMachine.Type vmType = cmd.getVirtualMachine().getType();
                 Pair<ManagedObjectReference, String> networkInfo = prepareNetworkFromNicInfo(vmMo.getRunningHost(), nicTo, configureVServiceInNexus, vmType);
+                s_logger.info("[NSX_PLUGIN_LOG] networkInfo=" + _gson.toJson(networkInfo));
                 if (VmwareHelper.isDvPortGroup(networkInfo.first())) {
                     String dvSwitchUuid;
                     ManagedObjectReference dcMor = hyperHost.getHyperHostDatacenter();
@@ -1737,6 +1738,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
             //
             // Configure VM
             //
+            s_logger.info("[NSX_PLUGIN_LOG] configure vm with vmConfigSpec=" + _gson.toJson(vmConfigSpec));
             if (!vmMo.configureVm(vmConfigSpec)) {
                 throw new Exception("Failed to configure VM before start. vmName: " + vmInternalCSName);
             }
@@ -1755,6 +1757,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
             //
             // Power-on VM
             //
+            s_logger.info("[NSX_PLUGIN_LOG] power on vmMo=" + _gson.toJson(vmMo));
             if (!vmMo.powerOn()) {
                 throw new Exception("Failed to start VM. vmName: " + vmInternalCSName + " with hostname " + vmNameOnVcenter);
             }
@@ -1989,6 +1992,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
          * the VM
          */
         int nicIndex = 0;
+        s_logger.info("[NSX_PLUGIN_LOG] postNvpConfig vmSpec=" + new Gson().toJson(vmSpec));
         for (NicTO nicTo : sortNicsByDeviceId(vmSpec.getNics())) {
             if (nicTo.getBroadcastType() == BroadcastDomainType.Lswitch) {
                 // We need to create a port with a unique vlan and pass the key to the nic device
@@ -1998,6 +2002,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
                     throw new Exception("Failed to find a VirtualDevice for nic " + nicIndex); //FIXME Generic exceptions are bad
                 }
                 VirtualDeviceBackingInfo backing = nicVirtualDevice.getBacking();
+                s_logger.info("[NSX_PLUGIN_LOG] postNvpConfig backing=" + new Gson().toJson(backing));
                 if (backing instanceof VirtualEthernetCardDistributedVirtualPortBackingInfo) {
                     // This NIC is connected to a Distributed Virtual Switch
                     VirtualEthernetCardDistributedVirtualPortBackingInfo portInfo = (VirtualEthernetCardDistributedVirtualPortBackingInfo)backing;
@@ -2006,6 +2011,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
                     String portGroupKey = port.getPortgroupKey();
                     String dvSwitchUuid = port.getSwitchUuid();
 
+                    s_logger.info("[NSX_PLUGIN_LOG] backing is instance of VirtualEthernetCardDistributedVirtualPortBackingInfo");
                     s_logger.debug("NIC " + nicTo.toString() + " is connected to dvSwitch " + dvSwitchUuid + " pg " + portGroupKey + " port " + portKey);
 
                     ManagedObjectReference dvSwitchManager = vmMo.getContext().getVimClient().getServiceContent().getDvSwitchManager();
@@ -2076,6 +2082,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
                 } else if (backing instanceof VirtualEthernetCardNetworkBackingInfo) {
                     // This NIC is connected to a Virtual Switch
                     // Nothing to do
+                    s_logger.info("[NSX_PLUGIN_LOG] backing is instance of VirtualEthernetCardNetworkBackingInfo, does nothing");
                 } else {
                     s_logger.error("nic device backing is of type " + backing.getClass().getName());
                     throw new Exception("Incompatible backing for a VirtualDevice for nic " + nicIndex); //FIXME Generic exceptions are bad
