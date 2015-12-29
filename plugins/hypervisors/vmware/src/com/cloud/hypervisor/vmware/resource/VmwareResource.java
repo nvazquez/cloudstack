@@ -41,64 +41,11 @@ import java.util.UUID;
 
 import javax.naming.ConfigurationException;
 
-import org.apache.log4j.Logger;
-import org.apache.log4j.NDC;
-
-import com.google.gson.Gson;
-import com.vmware.vim25.AboutInfo;
-import com.vmware.vim25.BoolPolicy;
-import com.vmware.vim25.ClusterDasConfigInfo;
-import com.vmware.vim25.ComputeResourceSummary;
-import com.vmware.vim25.CustomFieldStringValue;
-import com.vmware.vim25.DVPortConfigInfo;
-import com.vmware.vim25.DVPortConfigSpec;
-import com.vmware.vim25.DatastoreSummary;
-import com.vmware.vim25.DistributedVirtualPort;
-import com.vmware.vim25.DistributedVirtualSwitchPortConnection;
-import com.vmware.vim25.DistributedVirtualSwitchPortCriteria;
-import com.vmware.vim25.DynamicProperty;
-import com.vmware.vim25.HostCapability;
-import com.vmware.vim25.HostHostBusAdapter;
-import com.vmware.vim25.HostInternetScsiHba;
-import com.vmware.vim25.ManagedObjectReference;
-import com.vmware.vim25.ObjectContent;
-import com.vmware.vim25.OptionValue;
-import com.vmware.vim25.PerfCounterInfo;
-import com.vmware.vim25.PerfEntityMetric;
-import com.vmware.vim25.PerfEntityMetricBase;
-import com.vmware.vim25.PerfMetricId;
-import com.vmware.vim25.PerfMetricIntSeries;
-import com.vmware.vim25.PerfMetricSeries;
-import com.vmware.vim25.PerfQuerySpec;
-import com.vmware.vim25.PerfSampleInfo;
-import com.vmware.vim25.RuntimeFaultFaultMsg;
-import com.vmware.vim25.ToolsUnavailableFaultMsg;
-import com.vmware.vim25.VMwareDVSPortSetting;
-import com.vmware.vim25.VimPortType;
-import com.vmware.vim25.VirtualDevice;
-import com.vmware.vim25.VirtualDeviceBackingInfo;
-import com.vmware.vim25.VirtualDeviceConfigSpec;
-import com.vmware.vim25.VirtualDeviceConfigSpecOperation;
-import com.vmware.vim25.VirtualDisk;
-import com.vmware.vim25.VirtualDiskFlatVer2BackingInfo;
-import com.vmware.vim25.VirtualEthernetCard;
-import com.vmware.vim25.VirtualEthernetCardDistributedVirtualPortBackingInfo;
-import com.vmware.vim25.VirtualEthernetCardNetworkBackingInfo;
-import com.vmware.vim25.VirtualEthernetCardOpaqueNetworkBackingInfo;
-import com.vmware.vim25.VirtualMachineConfigSpec;
-import com.vmware.vim25.VirtualMachineFileInfo;
-import com.vmware.vim25.VirtualMachineFileLayoutEx;
-import com.vmware.vim25.VirtualMachineFileLayoutExFileInfo;
-import com.vmware.vim25.VirtualMachineGuestOsIdentifier;
-import com.vmware.vim25.VirtualMachinePowerState;
-import com.vmware.vim25.VirtualMachineRelocateSpec;
-import com.vmware.vim25.VirtualMachineRelocateSpecDiskLocator;
-import com.vmware.vim25.VirtualMachineRuntimeInfo;
-import com.vmware.vim25.VmwareDistributedVirtualSwitchVlanIdSpec;
-
 import org.apache.cloudstack.storage.command.StorageSubSystemCommand;
 import org.apache.cloudstack.storage.to.TemplateObjectTO;
 import org.apache.cloudstack.storage.to.VolumeObjectTO;
+import org.apache.log4j.Logger;
+import org.apache.log4j.NDC;
 
 import com.cloud.agent.IAgentControl;
 import com.cloud.agent.api.Answer;
@@ -278,6 +225,58 @@ import com.cloud.vm.VirtualMachine;
 import com.cloud.vm.VirtualMachine.PowerState;
 import com.cloud.vm.VirtualMachineName;
 import com.cloud.vm.VmDetailConstants;
+import com.google.gson.Gson;
+import com.vmware.vim25.AboutInfo;
+import com.vmware.vim25.BoolPolicy;
+import com.vmware.vim25.ClusterDasConfigInfo;
+import com.vmware.vim25.ComputeResourceSummary;
+import com.vmware.vim25.CustomFieldStringValue;
+import com.vmware.vim25.DVPortConfigInfo;
+import com.vmware.vim25.DVPortConfigSpec;
+import com.vmware.vim25.DatastoreSummary;
+import com.vmware.vim25.DistributedVirtualPort;
+import com.vmware.vim25.DistributedVirtualSwitchPortConnection;
+import com.vmware.vim25.DistributedVirtualSwitchPortCriteria;
+import com.vmware.vim25.DynamicProperty;
+import com.vmware.vim25.HostCapability;
+import com.vmware.vim25.HostHostBusAdapter;
+import com.vmware.vim25.HostInternetScsiHba;
+import com.vmware.vim25.ManagedObjectReference;
+import com.vmware.vim25.ObjectContent;
+import com.vmware.vim25.OptionValue;
+import com.vmware.vim25.PerfCounterInfo;
+import com.vmware.vim25.PerfEntityMetric;
+import com.vmware.vim25.PerfEntityMetricBase;
+import com.vmware.vim25.PerfMetricId;
+import com.vmware.vim25.PerfMetricIntSeries;
+import com.vmware.vim25.PerfMetricSeries;
+import com.vmware.vim25.PerfQuerySpec;
+import com.vmware.vim25.PerfSampleInfo;
+import com.vmware.vim25.RuntimeFaultFaultMsg;
+import com.vmware.vim25.ToolsUnavailableFaultMsg;
+import com.vmware.vim25.VMwareDVSPortSetting;
+import com.vmware.vim25.VimPortType;
+import com.vmware.vim25.VirtualDevice;
+import com.vmware.vim25.VirtualDeviceBackingInfo;
+import com.vmware.vim25.VirtualDeviceConfigSpec;
+import com.vmware.vim25.VirtualDeviceConfigSpecOperation;
+import com.vmware.vim25.VirtualDisk;
+import com.vmware.vim25.VirtualDiskFlatVer2BackingInfo;
+import com.vmware.vim25.VirtualEthernetCard;
+import com.vmware.vim25.VirtualEthernetCardDistributedVirtualPortBackingInfo;
+import com.vmware.vim25.VirtualEthernetCardNetworkBackingInfo;
+import com.vmware.vim25.VirtualEthernetCardOpaqueNetworkBackingInfo;
+import com.vmware.vim25.VirtualMachineConfigSpec;
+import com.vmware.vim25.VirtualMachineFileInfo;
+import com.vmware.vim25.VirtualMachineFileLayoutEx;
+import com.vmware.vim25.VirtualMachineFileLayoutExFileInfo;
+import com.vmware.vim25.VirtualMachineGuestOsIdentifier;
+import com.vmware.vim25.VirtualMachinePowerState;
+import com.vmware.vim25.VirtualMachineRelocateSpec;
+import com.vmware.vim25.VirtualMachineRelocateSpecDiskLocator;
+import com.vmware.vim25.VirtualMachineRuntimeInfo;
+import com.vmware.vim25.VirtualMachineVideoCard;
+import com.vmware.vim25.VmwareDistributedVirtualSwitchVlanIdSpec;
 
 public class VmwareResource implements StoragePoolResource, ServerResource, VmwareHostService, VirtualRouterDeployer {
     private static final Logger s_logger = Logger.getLogger(VmwareResource.class);
@@ -1895,6 +1894,9 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
 
             postDiskConfigBeforeStart(vmMo, vmSpec, sortedDisks, ideControllerKey, scsiControllerKey, iqnToPath, hyperHost, context);
 
+            //Sets video card memory to the one provided in detail svga.vramSize (if provided), 64MB was always set before
+            postVideoCardMemoryConfigBeforeStart(vmMo, vmSpec);
+
             //
             // Power-on VM
             //
@@ -1940,6 +1942,44 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
 
             return startAnswer;
         } finally {
+        }
+    }
+
+    private void postVideoCardMemoryConfigBeforeStart(VirtualMachineMO vmMo, VirtualMachineTO vmSpec) {
+        String paramVRamSize = "svga.vramSize";
+        if (vmSpec.getDetails().containsKey(paramVRamSize)){
+            String value = vmSpec.getDetails().get(paramVRamSize);
+            try {
+                long svgaVmramSize = Long.parseLong(value);
+                for (VirtualDevice device : vmMo.getAllDeviceList()){
+                    if (device instanceof VirtualMachineVideoCard){
+                        VirtualMachineVideoCard videoCard = (VirtualMachineVideoCard) device;
+                        if (videoCard.getVideoRamSizeInKB().longValue() != svgaVmramSize){
+                            s_logger.info("Video card memory was set " + videoCard.getVideoRamSizeInKB().longValue() + "kb instead of " + svgaVmramSize + "kb");
+                            videoCard.setVideoRamSizeInKB(svgaVmramSize);
+                            videoCard.setUseAutoDetect(false);
+
+                            VirtualDeviceConfigSpec arrayVideoCardConfigSpecs = new VirtualDeviceConfigSpec();
+                            arrayVideoCardConfigSpecs.setDevice(videoCard);
+                            arrayVideoCardConfigSpecs.setOperation(VirtualDeviceConfigSpecOperation.EDIT);
+
+                            VirtualMachineConfigSpec changeVideoCardSpecs = new VirtualMachineConfigSpec();
+                            changeVideoCardSpecs.getDeviceChange().add(arrayVideoCardConfigSpecs);
+
+                            boolean res = vmMo.configureVm(changeVideoCardSpecs);
+                            if (res) {
+                                s_logger.info("Video card memory successfully updated to " + svgaVmramSize + "kb");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (NumberFormatException e){
+                s_logger.error("Unexpected value, cannot parse " + value + " to long due to: " + e.getMessage());
+            }
+            catch (Exception e){
+                s_logger.error("Error while reconfiguring vm due to: " + e.getMessage());
+            }
         }
     }
 
