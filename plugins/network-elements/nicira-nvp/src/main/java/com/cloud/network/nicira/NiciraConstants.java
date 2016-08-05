@@ -42,4 +42,7 @@ public class NiciraConstants {
     public static final String FIELDS_QUERY_PARAMETER = "fields";
     public static final String TYPES_QUERY_PARAMETER = "types";
 
+    //NSX-T Constants
+    public static final String NSX_T_LOGIN_URL = "/api/session/create";
+
 }

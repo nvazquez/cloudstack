@@ -5777,10 +5777,16 @@
                                         },
 										l2gatewayserviceuuid: {
                                             label: 'label.nicira.l2gatewayserviceuuid'
-                                        }
+                                        },
+										isnsxtransformers : {
+											label: 'label.nicira.isnsxtransformers',
+											isBoolean: true,
+											isChecked: false
+										}
                                     }
                                 },
                                 action: function (args) {
+									args.data.isnsxtransformers = (args.data.isnsxtransformers == "on");
                                     if (nspMap[ "niciraNvp"] == null) {
                                         $.ajax({
                                             url: createURL("addNetworkServiceProvider&name=NiciraNvp&physicalnetworkid=" + selectedPhysicalNetworkObj.id),
@@ -12663,10 +12669,17 @@
                                     },
 									l2gatewayserviceuuid: {
 										label: 'label.nicira.l2gatewayserviceuuid'
+									},
+									isnsxtransformers : {
+										label: 'label.nicira.isnsxtransformers',
+										isBoolean: true,
+										isReverse: true,
+										isChecked: false
 									}
                                 }
                             },
                             action: function (args) {
+								args.data.isnsxtransformers = (args.data.isnsxtransformers == "on");
                                 if (nspMap[ "niciraNvp"] == null) {
                                     $.ajax({
                                         url: createURL("addNetworkServiceProvider&name=NiciraNvp&physicalnetworkid=" + selectedPhysicalNetworkObj.id),
@@ -20876,6 +20889,7 @@
         array1.push("&password=" + todb(args.data.password));
         array1.push("&hostname=" + todb(args.data.host));
         array1.push("&transportzoneuuid=" + todb(args.data.transportzoneuuid));
+		array1.push("&isnsxtransformers=" + todb(args.data.isnsxtransformers));
 
         var l3GatewayServiceUuid = args.data.l3gatewayserviceuuid;
         if (l3GatewayServiceUuid != null && l3GatewayServiceUuid.length > 0) {

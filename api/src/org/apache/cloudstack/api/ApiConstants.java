@@ -647,6 +647,7 @@ public class ApiConstants {
     public static final String OVM3_VIP = "ovm3vip";
 
     public static final String ADMIN = "admin";
+    public static final String IS_NSX_TRANSFORMERS = "isnsxtransformers";
 
     public enum HostDetails {
         all, capacity, events, stats, min;

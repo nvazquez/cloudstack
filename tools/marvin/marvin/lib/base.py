@@ -3958,7 +3958,7 @@ class NiciraNvp:
 
     @classmethod
     def add(cls, apiclient, services, physicalnetworkid,
-            hostname=None, username=None, password=None, transportzoneuuid=None, l2gatewayserviceuuid=None):
+            hostname=None, username=None, password=None, transportzoneuuid=None, l2gatewayserviceuuid=None, isnsxtransformers=None):
         cmd = addNiciraNvpDevice.addNiciraNvpDeviceCmd()
         cmd.physicalnetworkid = physicalnetworkid
         if hostname:
@@ -3985,6 +3985,9 @@ class NiciraNvp:
             cmd.l2gatewayserviceuuid = l2gatewayserviceuuid
         elif services and 'l2gatewayserviceuuid' in services:
             cmd.l2gatewayserviceuuid = services['l2gatewayserviceuuid']
+        
+        if isnsxtransformers:
+            cmd.isnsxtransformers = services['isnsxtransformers']
 
 	return NiciraNvp(apiclient.addNiciraNvpDevice(cmd).__dict__)
 

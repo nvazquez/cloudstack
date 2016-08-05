@@ -29,6 +29,7 @@ import java.util.UUID;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.impl.client.CloseableHttpClient;
 
+import com.cloud.network.nicira.NiciraNvpApi.Builder;
 import com.cloud.utils.rest.CloudstackRESTException;
 import com.cloud.utils.rest.RESTServiceConnector;
 import com.google.common.base.Optional;
@@ -90,13 +91,21 @@ public class NiciraNvpApi {
         classToDeserializerMap.put(NatRule.class, new NatRuleAdapter());
         classToDeserializerMap.put(RoutingConfig.class, new RoutingConfigAdapter());
 
+        String login_url = "";
+        if (builder.isNsxTransformers){
+            login_url = NiciraConstants.NSX_T_LOGIN_URL;
+        }
+        else {
+            login_url = NiciraConstants.LOGIN_URL;
+        }
+
         final NiciraRestClient niciraRestClient = NiciraRestClient.create()
             .client(builder.httpClient)
             .clientContext(builder.httpClientContext)
             .hostname(builder.host)
             .username(builder.username)
             .password(builder.password)
-            .loginUrl(NiciraConstants.LOGIN_URL)
+            .loginUrl(login_url)
             .executionLimit(DEFAULT_MAX_RETRIES)
             .build();
         restConnector = RESTServiceConnector.create()
@@ -628,6 +637,7 @@ public class NiciraNvpApi {
         private String host;
         private String username;
         private String password;
+        private boolean isNsxTransformers;
         private CloseableHttpClient httpClient;
         private HttpClientContext httpClientContext = HttpClientContext.create();
 
@@ -658,6 +668,11 @@ public class NiciraNvpApi {
 
         public NiciraNvpApi build() {
             return new NiciraNvpApi(this);
+        }
+
+        public Builder isNsxTransformers(boolean isNsxTransformers) {
+            this.isNsxTransformers = isNsxTransformers;
+            return this;
         }
     }
 }

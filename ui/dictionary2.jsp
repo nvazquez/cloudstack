@@ -765,6 +765,7 @@ under the License.
 'label.palo.alto.details': '<fmt:message key="label.palo.alto.details" />',
 'label.added.nicira.nvp.controller': '<fmt:message key="label.added.nicira.nvp.controller" />',
 'label.nicira.nvp.details': '<fmt:message key="label.nicira.nvp.details" />',
+'label.nicira.isnsxtransformers': '<fmt:message key="label.nicira.isnsxtransformers" />',
 'label.added.brocade.vcs.switch': '<fmt:message key="label.added.brocade.vcs.switch" />',
 'label.brocade.vcs.details': '<fmt:message key="label.brocade.vcs.details" />',
 'label.added.new.bigswitch.bcf.controller': '<fmt:message key="label.added.new.bigswitch.bcf.controller" />',

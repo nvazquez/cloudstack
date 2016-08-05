@@ -86,6 +86,10 @@ public class AddNiciraNvpDeviceCmd extends BaseAsyncCmd {
             description = "The L2 Gateway Service UUID configured on the Nicira Controller")
     private String l2gatewayserviceuuid;
 
+    @Parameter(name = ApiConstants.IS_NSX_TRANSFORMERS, type = CommandType.BOOLEAN,
+            required = true, description = "Indicates if device uses NSX Transformers")
+    private boolean isNsxTransformers;
+
     /////////////////////////////////////////////////////
     /////////////////// Accessors ///////////////////////
     /////////////////////////////////////////////////////
@@ -116,7 +120,11 @@ public class AddNiciraNvpDeviceCmd extends BaseAsyncCmd {
 
     public String getL2GatewayServiceUuid() {
         return l2gatewayserviceuuid;
-     }
+    }
+
+    public boolean isNsxTransformers() {
+        return isNsxTransformers;
+    }
 
     /////////////////////////////////////////////////////
     /////////////// API Implementation///////////////////

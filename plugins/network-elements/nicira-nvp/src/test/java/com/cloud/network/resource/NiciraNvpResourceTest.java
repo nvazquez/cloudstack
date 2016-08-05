@@ -97,7 +97,7 @@ public class NiciraNvpResourceTest {
     public void setUp() {
         resource = new NiciraNvpResource() {
             @Override
-            protected NiciraNvpApi createNiciraNvpApi(final String host, final String username, final String password) {
+            protected NiciraNvpApi createNiciraNvpApi(final String host, final String username, final String password, final boolean isNsxTransformers) {
                 return nvpApi;
             }
         };
@@ -109,6 +109,7 @@ public class NiciraNvpResourceTest {
         parameters.put("guid", "aaaaa-bbbbb-ccccc");
         parameters.put("zoneId", "blublub");
         parameters.put("adminpass", "adminpass");
+        parameters.put("isnsxtransformers", "false");
 
         retryUtility = CommandRetryUtility.getInstance();
         retryUtility.setServerResource(resource);

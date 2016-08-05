@@ -66,9 +66,9 @@ public class NiciraNvpResource implements ServerResource {
     private NiciraNvpUtilities niciraNvpUtilities;
     private CommandRetryUtility retryUtility;
 
-    protected NiciraNvpApi createNiciraNvpApi(final String host, final String username, final String password) throws CloudstackRESTException {
+    protected NiciraNvpApi createNiciraNvpApi(final String host, final String username, final String password, boolean isNsxTransformers) throws CloudstackRESTException {
         try {
-            return NiciraNvpApi.create().host(host).username(username).password(password).httpClient(HttpClientHelper.createHttpClient(MAX_REDIRECTS)).build();
+            return NiciraNvpApi.create().host(host).username(username).password(password).isNsxTransformers(isNsxTransformers).httpClient(HttpClientHelper.createHttpClient(MAX_REDIRECTS)).build();
         } catch (final KeyManagementException e) {
             throw new CloudstackRESTException("Could not create HTTP client", e);
         } catch (final NoSuchAlgorithmException e) {
@@ -110,13 +110,18 @@ public class NiciraNvpResource implements ServerResource {
         if (adminpass == null) {
             throw new ConfigurationException("Unable to find admin password");
         }
+        final String isNsxTransformersStringValue = (String) params.get("isnsxtransformers");
+        if (isNsxTransformersStringValue == null){
+            throw new ConfigurationException("Unable to find if device is NSX Transformers");
+        }
+        final boolean isNsxTransformers = Boolean.valueOf(isNsxTransformersStringValue);
 
         niciraNvpUtilities = NiciraNvpUtilities.getInstance();
         retryUtility = CommandRetryUtility.getInstance();
         retryUtility.setServerResource(this);
 
         try {
-            niciraNvpApi = createNiciraNvpApi(ip, adminuser, adminpass);
+            niciraNvpApi = createNiciraNvpApi(ip, adminuser, adminpass, isNsxTransformers);
         } catch (final CloudstackRESTException e) {
             throw new ConfigurationException("Could not create a Nicira Nvp API client: " + e.getMessage());
         }

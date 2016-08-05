@@ -612,6 +612,7 @@ NiciraNvpElementService, ResourceStateAdapter, IpDeployer {
         if (cmd.getL2GatewayServiceUuid() != null) {
             params.put("l2gatewayserviceuuid", cmd.getL2GatewayServiceUuid());
         }
+        params.put("isnsxtransformers", String.valueOf(cmd.isNsxTransformers()));
 
         Map<String, Object> hostdetails = new HashMap<String, Object>();
         hostdetails.putAll(params);
