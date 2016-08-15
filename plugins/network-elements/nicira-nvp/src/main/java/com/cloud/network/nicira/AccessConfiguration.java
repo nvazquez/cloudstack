@@ -21,7 +21,7 @@ package com.cloud.network.nicira;
 
 import java.util.List;
 
-public abstract class AccessConfiguration<T extends AccessRule> extends BaseNiciraNamedEntity {
+public abstract class AccessConfiguration<T extends AccessRule> extends BaseNSXEntity {
 
     protected List<T> logicalPortEgressRules;
     protected List<T> logicalPortIngressRules;

@@ -76,10 +76,10 @@ import com.cloud.host.Host;
 import com.cloud.network.nicira.Attachment;
 import com.cloud.network.nicira.ControlClusterStatus;
 import com.cloud.network.nicira.DestinationNatRule;
-import com.cloud.network.nicira.LogicalRouter;
-import com.cloud.network.nicira.LogicalRouterPort;
-import com.cloud.network.nicira.LogicalSwitch;
-import com.cloud.network.nicira.LogicalSwitchPort;
+import com.cloud.network.nicira.LogicalRouterNSX;
+import com.cloud.network.nicira.LogicalRouterPortNSX;
+import com.cloud.network.nicira.LogicalSwitchNSX;
+import com.cloud.network.nicira.LogicalSwitchPortNSX;
 import com.cloud.network.nicira.NatRule;
 import com.cloud.network.nicira.NiciraNvpApi;
 import com.cloud.network.nicira.NiciraNvpApiException;
@@ -173,9 +173,9 @@ public class NiciraNvpResourceTest {
     public void testRetries() throws ConfigurationException, NiciraNvpApiException {
         resource.configure("NiciraNvpResource", parameters);
 
-        final LogicalSwitch ls = mock(LogicalSwitch.class);
+        final LogicalSwitchNSX ls = mock(LogicalSwitchNSX.class);
         when(ls.getUuid()).thenReturn("cccc").thenReturn("cccc");
-        when(nvpApi.createLogicalSwitch((LogicalSwitch) any())).thenThrow(new NiciraNvpApiException()).thenThrow(new NiciraNvpApiException()).thenReturn(ls);
+        when(nvpApi.createLogicalSwitch((LogicalSwitchNSX) any())).thenThrow(new NiciraNvpApiException()).thenThrow(new NiciraNvpApiException()).thenReturn(ls);
 
         final CreateLogicalSwitchCommand clsc = new CreateLogicalSwitchCommand((String) parameters.get("guid"), "stt", "loigicalswitch", "owner");
         final CreateLogicalSwitchAnswer clsa = (CreateLogicalSwitchAnswer) resource.executeRequest(clsc);
@@ -186,9 +186,9 @@ public class NiciraNvpResourceTest {
     public void testCreateLogicalSwitch() throws ConfigurationException, NiciraNvpApiException {
         resource.configure("NiciraNvpResource", parameters);
 
-        final LogicalSwitch ls = mock(LogicalSwitch.class);
+        final LogicalSwitchNSX ls = mock(LogicalSwitchNSX.class);
         when(ls.getUuid()).thenReturn("cccc").thenReturn("cccc");
-        when(nvpApi.createLogicalSwitch((LogicalSwitch) any())).thenReturn(ls);
+        when(nvpApi.createLogicalSwitch((LogicalSwitchNSX) any())).thenReturn(ls);
 
         final CreateLogicalSwitchCommand clsc = new CreateLogicalSwitchCommand((String) parameters.get("guid"), "stt", "loigicalswitch", "owner");
         final CreateLogicalSwitchAnswer clsa = (CreateLogicalSwitchAnswer) resource.executeRequest(clsc);
@@ -200,9 +200,9 @@ public class NiciraNvpResourceTest {
     public void testCreateLogicalSwitchApiException() throws ConfigurationException, NiciraNvpApiException {
         resource.configure("NiciraNvpResource", parameters);
 
-        final LogicalSwitch ls = mock(LogicalSwitch.class);
+        final LogicalSwitchNSX ls = mock(LogicalSwitchNSX.class);
         when(ls.getUuid()).thenReturn("cccc").thenReturn("cccc");
-        when(nvpApi.createLogicalSwitch((LogicalSwitch) any())).thenThrow(new NiciraNvpApiException());
+        when(nvpApi.createLogicalSwitch((LogicalSwitchNSX) any())).thenThrow(new NiciraNvpApiException());
 
         final CreateLogicalSwitchCommand clsc = new CreateLogicalSwitchCommand((String) parameters.get("guid"), "stt", "loigicalswitch", "owner");
         final CreateLogicalSwitchAnswer clsa = (CreateLogicalSwitchAnswer) resource.executeRequest(clsc);
@@ -233,9 +233,9 @@ public class NiciraNvpResourceTest {
     public void testCreateLogicalSwitchPort() throws ConfigurationException, NiciraNvpApiException {
         resource.configure("NiciraNvpResource", parameters);
 
-        final LogicalSwitchPort lsp = mock(LogicalSwitchPort.class);
+        final LogicalSwitchPortNSX lsp = mock(LogicalSwitchPortNSX.class);
         when(lsp.getUuid()).thenReturn("eeee");
-        when(nvpApi.createLogicalSwitchPort(eq("cccc"), (LogicalSwitchPort) any())).thenReturn(lsp);
+        when(nvpApi.createLogicalSwitchPort(eq("cccc"), (LogicalSwitchPortNSX) any())).thenReturn(lsp);
 
         final CreateLogicalSwitchPortCommand clspc = new CreateLogicalSwitchPortCommand("cccc", "dddd", "owner", "nicname");
         final CreateLogicalSwitchPortAnswer clspa = (CreateLogicalSwitchPortAnswer) resource.executeRequest(clspc);
@@ -248,9 +248,9 @@ public class NiciraNvpResourceTest {
     public void testCreateLogicalSwitchPortApiExceptionInCreate() throws ConfigurationException, NiciraNvpApiException {
         resource.configure("NiciraNvpResource", parameters);
 
-        final LogicalSwitchPort lsp = mock(LogicalSwitchPort.class);
+        final LogicalSwitchPortNSX lsp = mock(LogicalSwitchPortNSX.class);
         when(lsp.getUuid()).thenReturn("eeee");
-        when(nvpApi.createLogicalSwitchPort(eq("cccc"), (LogicalSwitchPort) any())).thenThrow(new NiciraNvpApiException());
+        when(nvpApi.createLogicalSwitchPort(eq("cccc"), (LogicalSwitchPortNSX) any())).thenThrow(new NiciraNvpApiException());
 
         final CreateLogicalSwitchPortCommand clspc = new CreateLogicalSwitchPortCommand("cccc", "dddd", "owner", "nicname");
         final CreateLogicalSwitchPortAnswer clspa = (CreateLogicalSwitchPortAnswer) resource.executeRequest(clspc);
@@ -261,9 +261,9 @@ public class NiciraNvpResourceTest {
     public void testCreateLogicalSwitchPortApiExceptionInModify() throws ConfigurationException, NiciraNvpApiException {
         resource.configure("NiciraNvpResource", parameters);
 
-        final LogicalSwitchPort lsp = mock(LogicalSwitchPort.class);
+        final LogicalSwitchPortNSX lsp = mock(LogicalSwitchPortNSX.class);
         when(lsp.getUuid()).thenReturn("eeee");
-        when(nvpApi.createLogicalSwitchPort(eq("cccc"), (LogicalSwitchPort) any())).thenReturn(lsp);
+        when(nvpApi.createLogicalSwitchPort(eq("cccc"), (LogicalSwitchPortNSX) any())).thenReturn(lsp);
         doThrow(new NiciraNvpApiException()).when(nvpApi).updateLogicalSwitchPortAttachment((String) any(), (String) any(), (Attachment) any());
 
         final CreateLogicalSwitchPortCommand clspc = new CreateLogicalSwitchPortCommand("cccc", "dddd", "owner", "nicname");
@@ -295,7 +295,7 @@ public class NiciraNvpResourceTest {
     public void testFindLogicalSwitchPort() throws ConfigurationException, NiciraNvpApiException {
         resource.configure("NiciraNvpResource", parameters);
 
-        final List<LogicalSwitchPort> lspl = Arrays.asList(new LogicalSwitchPort());
+        final List<LogicalSwitchPortNSX> lspl = Arrays.asList(new LogicalSwitchPortNSX());
         when(nvpApi.findLogicalSwitchPortsByUuid("aaaa", "bbbb")).thenReturn(lspl);
 
         final FindLogicalSwitchPortAnswer flspa = (FindLogicalSwitchPortAnswer) resource.executeRequest(new FindLogicalSwitchPortCommand("aaaa", "bbbb"));
@@ -307,7 +307,7 @@ public class NiciraNvpResourceTest {
         resource.configure("NiciraNvpResource", parameters);
 
         @SuppressWarnings("unchecked")
-        final List<LogicalSwitchPort> lspl = Collections.EMPTY_LIST;
+        final List<LogicalSwitchPortNSX> lspl = Collections.EMPTY_LIST;
         when(nvpApi.findLogicalSwitchPortsByUuid("aaaa", "bbbb")).thenReturn(lspl);
 
         final FindLogicalSwitchPortAnswer flspa = (FindLogicalSwitchPortAnswer) resource.executeRequest(new FindLogicalSwitchPortCommand("aaaa", "bbbb"));
@@ -328,15 +328,15 @@ public class NiciraNvpResourceTest {
     public void testCreateLogicalRouter() throws ConfigurationException, NiciraNvpApiException {
         resource.configure("NiciraNvpResource", parameters);
 
-        final LogicalRouter lrc = mock(LogicalRouter.class);
-        final LogicalRouterPort lrp = mock(LogicalRouterPort.class);
-        final LogicalSwitchPort lsp = mock(LogicalSwitchPort.class);
+        final LogicalRouterNSX lrc = mock(LogicalRouterNSX.class);
+        final LogicalRouterPortNSX lrp = mock(LogicalRouterPortNSX.class);
+        final LogicalSwitchPortNSX lsp = mock(LogicalSwitchPortNSX.class);
         when(lrc.getUuid()).thenReturn("ccccc");
         when(lrp.getUuid()).thenReturn("ddddd").thenReturn("eeeee");
         when(lsp.getUuid()).thenReturn("fffff");
-        when(nvpApi.createLogicalRouter((LogicalRouter) any())).thenReturn(lrc);
-        when(nvpApi.createLogicalRouterPort(eq("ccccc"), (LogicalRouterPort) any())).thenReturn(lrp);
-        when(nvpApi.createLogicalSwitchPort(eq("bbbbb"), (LogicalSwitchPort) any())).thenReturn(lsp);
+        when(nvpApi.createLogicalRouter((LogicalRouterNSX) any())).thenReturn(lrc);
+        when(nvpApi.createLogicalRouterPort(eq("ccccc"), (LogicalRouterPortNSX) any())).thenReturn(lrp);
+        when(nvpApi.createLogicalSwitchPort(eq("bbbbb"), (LogicalSwitchPortNSX) any())).thenReturn(lsp);
         final CreateLogicalRouterCommand clrc = new CreateLogicalRouterCommand("aaaaa", 50, "bbbbb", "lrouter", "publiccidr", "nexthop", "internalcidr", "owner");
         final CreateLogicalRouterAnswer clra = (CreateLogicalRouterAnswer) resource.executeRequest(clrc);
 
@@ -349,7 +349,7 @@ public class NiciraNvpResourceTest {
     public void testCreateLogicalRouterApiException() throws ConfigurationException, NiciraNvpApiException {
         resource.configure("NiciraNvpResource", parameters);
 
-        when(nvpApi.createLogicalRouter((LogicalRouter) any())).thenThrow(new NiciraNvpApiException());
+        when(nvpApi.createLogicalRouter((LogicalRouterNSX) any())).thenThrow(new NiciraNvpApiException());
         final CreateLogicalRouterCommand clrc = new CreateLogicalRouterCommand("aaaaa", 50, "bbbbb", "lrouter", "publiccidr", "nexthop", "internalcidr", "owner");
         final CreateLogicalRouterAnswer clra = (CreateLogicalRouterAnswer) resource.executeRequest(clrc);
 
@@ -360,10 +360,10 @@ public class NiciraNvpResourceTest {
     public void testCreateLogicalRouterApiExceptionRollbackRouter() throws ConfigurationException, NiciraNvpApiException {
         resource.configure("NiciraNvpResource", parameters);
 
-        final LogicalRouter lrc = mock(LogicalRouter.class);
+        final LogicalRouterNSX lrc = mock(LogicalRouterNSX.class);
         when(lrc.getUuid()).thenReturn("ccccc");
-        when(nvpApi.createLogicalRouter((LogicalRouter) any())).thenReturn(lrc);
-        when(nvpApi.createLogicalRouterPort(eq("ccccc"), (LogicalRouterPort) any())).thenThrow(new NiciraNvpApiException());
+        when(nvpApi.createLogicalRouter((LogicalRouterNSX) any())).thenReturn(lrc);
+        when(nvpApi.createLogicalRouterPort(eq("ccccc"), (LogicalRouterPortNSX) any())).thenThrow(new NiciraNvpApiException());
         final CreateLogicalRouterCommand clrc = new CreateLogicalRouterCommand("aaaaa", 50, "bbbbb", "lrouter", "publiccidr", "nexthop", "internalcidr", "owner");
         final CreateLogicalRouterAnswer clra = (CreateLogicalRouterAnswer) resource.executeRequest(clrc);
 
@@ -375,15 +375,15 @@ public class NiciraNvpResourceTest {
     public void testCreateLogicalRouterApiExceptionRollbackRouterAndSwitchPort() throws ConfigurationException, NiciraNvpApiException {
         resource.configure("NiciraNvpResource", parameters);
 
-        final LogicalRouter lrc = mock(LogicalRouter.class);
-        final LogicalRouterPort lrp = mock(LogicalRouterPort.class);
-        final LogicalSwitchPort lsp = mock(LogicalSwitchPort.class);
+        final LogicalRouterNSX lrc = mock(LogicalRouterNSX.class);
+        final LogicalRouterPortNSX lrp = mock(LogicalRouterPortNSX.class);
+        final LogicalSwitchPortNSX lsp = mock(LogicalSwitchPortNSX.class);
         when(lrc.getUuid()).thenReturn("ccccc");
         when(lrp.getUuid()).thenReturn("ddddd").thenReturn("eeeee");
         when(lsp.getUuid()).thenReturn("fffff");
-        when(nvpApi.createLogicalRouter((LogicalRouter) any())).thenReturn(lrc);
-        when(nvpApi.createLogicalRouterPort(eq("ccccc"), (LogicalRouterPort) any())).thenReturn(lrp);
-        when(nvpApi.createLogicalSwitchPort(eq("bbbbb"), (LogicalSwitchPort) any())).thenReturn(lsp);
+        when(nvpApi.createLogicalRouter((LogicalRouterNSX) any())).thenReturn(lrc);
+        when(nvpApi.createLogicalRouterPort(eq("ccccc"), (LogicalRouterPortNSX) any())).thenReturn(lrp);
+        when(nvpApi.createLogicalSwitchPort(eq("bbbbb"), (LogicalSwitchPortNSX) any())).thenReturn(lsp);
         when(nvpApi.createLogicalRouterNatRule((String) any(), (NatRule) any())).thenThrow(new NiciraNvpApiException());
         final CreateLogicalRouterCommand clrc = new CreateLogicalRouterCommand("aaaaa", 50, "bbbbb", "lrouter", "publiccidr", "nexthop", "internalcidr", "owner");
         final CreateLogicalRouterAnswer clra = (CreateLogicalRouterAnswer) resource.executeRequest(clrc);
@@ -408,12 +408,12 @@ public class NiciraNvpResourceTest {
 
         final ConfigurePublicIpsOnLogicalRouterCommand cmd = mock(ConfigurePublicIpsOnLogicalRouterCommand.class);
         @SuppressWarnings("unchecked")
-        final List<LogicalRouterPort> list = Collections.EMPTY_LIST;
+        final List<LogicalRouterPortNSX> list = Collections.EMPTY_LIST;
 
         when(cmd.getLogicalRouterUuid()).thenReturn("aaaaa");
         when(cmd.getL3GatewayServiceUuid()).thenReturn("bbbbb");
         when(nvpApi.findLogicalRouterPortByGatewayServiceUuid("aaaaa", "bbbbb")).thenReturn(list);
-        doThrow(new NiciraNvpApiException()).when(nvpApi).updateLogicalRouterPort((String) any(), (LogicalRouterPort) any());
+        doThrow(new NiciraNvpApiException()).when(nvpApi).updateLogicalRouterPort((String) any(), (LogicalRouterPortNSX) any());
 
         final ConfigurePublicIpsOnLogicalRouterAnswer answer = (ConfigurePublicIpsOnLogicalRouterAnswer) resource.executeRequest(cmd);
         assertFalse(answer.getResult());

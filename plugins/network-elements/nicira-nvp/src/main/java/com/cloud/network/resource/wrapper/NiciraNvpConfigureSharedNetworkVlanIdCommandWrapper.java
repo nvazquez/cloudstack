@@ -31,7 +31,7 @@ import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.ConfigureSharedNetworkVlanIdAnswer;
 import com.cloud.agent.api.ConfigureSharedNetworkVlanIdCommand;
 import com.cloud.network.nicira.L2GatewayAttachment;
-import com.cloud.network.nicira.LogicalSwitchPort;
+import com.cloud.network.nicira.LogicalSwitchPortNSX;
 import com.cloud.network.nicira.NiciraNvpApi;
 import com.cloud.network.nicira.NiciraNvpApiException;
 import com.cloud.network.nicira.NiciraNvpTag;
@@ -59,9 +59,9 @@ public class NiciraNvpConfigureSharedNetworkVlanIdCommandWrapper extends Command
         final NiciraNvpApi niciraNvpApi = niciraNvpResource.getNiciraNvpApi();
 
         s_logger.debug("Creating Logical Switch Port in Logical Switch " + logicalSwitchUuid);
-        LogicalSwitchPort lSwitchPort = null;
+        LogicalSwitchPortNSX lSwitchPort = null;
         try {
-            lSwitchPort = new LogicalSwitchPort();
+            lSwitchPort = new LogicalSwitchPortNSX();
             lSwitchPort.setAdminStatusEnabled(true);
             lSwitchPort.setDisplayName(niciraNvpResource.truncate(networkId + "-l2Gateway-port", NAME_MAX_LEN));
             lSwitchPort.setTags(tags);
@@ -92,7 +92,7 @@ public class NiciraNvpConfigureSharedNetworkVlanIdCommandWrapper extends Command
         return new ConfigureSharedNetworkVlanIdAnswer(command, true, "OK");
     }
 
-    private void cleanup(String logicalSwitchUuid, LogicalSwitchPort lSwitchPort, NiciraNvpApi niciraNvpApi) {
+    private void cleanup(String logicalSwitchUuid, LogicalSwitchPortNSX lSwitchPort, NiciraNvpApi niciraNvpApi) {
         s_logger.warn("Deleting previously created Logical Switch Port " + lSwitchPort.getUuid() + " (" + lSwitchPort.getDisplayName() + ") from Logical Switch " + logicalSwitchUuid);
         try {
             niciraNvpApi.deleteLogicalSwitchPort(logicalSwitchUuid, lSwitchPort.getUuid());

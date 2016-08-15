@@ -44,5 +44,6 @@ public class NiciraConstants {
 
     //NSX-T Constants
     public static final String NSX_T_LOGIN_URL = "/api/session/create";
+    public static final String SWITCH_URI_PREFIX_NSXT = "/api/v1/logical-switches";
 
 }

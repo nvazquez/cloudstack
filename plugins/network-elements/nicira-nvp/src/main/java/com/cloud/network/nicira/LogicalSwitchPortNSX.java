@@ -21,7 +21,7 @@ package com.cloud.network.nicira;
 
 import java.util.List;
 
-public class LogicalSwitchPort extends BaseNiciraNamedEntity {
+public class LogicalSwitchPortNSX extends BaseNSXEntity {
     private Integer portno;
     private boolean adminStatusEnabled;
     private String queueUuid;
@@ -29,11 +29,11 @@ public class LogicalSwitchPort extends BaseNiciraNamedEntity {
     private List<String> mirrorTargets;
     private final String type = "LogicalSwitchPortConfig";
 
-    public LogicalSwitchPort() {
+    public LogicalSwitchPortNSX() {
         super();
     }
 
-    public LogicalSwitchPort(final String displayName, final List<NiciraNvpTag> tags, final boolean adminStatusEnabled) {
+    public LogicalSwitchPortNSX(final String displayName, final List<NiciraNvpTag> tags, final boolean adminStatusEnabled) {
         super();
         this.displayName = displayName;
         this.tags = tags;

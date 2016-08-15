@@ -61,6 +61,7 @@ public class NiciraNvpResource implements ServerResource {
     private String name;
     private String guid;
     private String zoneId;
+    private boolean isNsxTransformers;
 
     private NiciraNvpApi niciraNvpApi;
     private NiciraNvpUtilities niciraNvpUtilities;
@@ -68,6 +69,7 @@ public class NiciraNvpResource implements ServerResource {
 
     protected NiciraNvpApi createNiciraNvpApi(final String host, final String username, final String password, boolean isNsxTransformers) throws CloudstackRESTException {
         try {
+            this.isNsxTransformers = isNsxTransformers;
             return NiciraNvpApi.create().host(host).username(username).password(password).isNsxTransformers(isNsxTransformers).httpClient(HttpClientHelper.createHttpClient(MAX_REDIRECTS)).build();
         } catch (final KeyManagementException e) {
             throw new CloudstackRESTException("Could not create HTTP client", e);
@@ -356,6 +358,10 @@ public class NiciraNvpResource implements ServerResource {
     @Override
     public void setRunLevel(final int level) {
         // TODO Auto-generated method stub
+    }
+
+    public boolean isNsxTransformers() {
+        return isNsxTransformers;
     }
 
 }

@@ -30,9 +30,9 @@ import org.apache.log4j.Logger;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.ConfigureSharedNetworkUuidAnswer;
 import com.cloud.agent.api.ConfigureSharedNetworkUuidCommand;
-import com.cloud.network.nicira.LogicalRouterPort;
-import com.cloud.network.nicira.LogicalSwitch;
-import com.cloud.network.nicira.LogicalSwitchPort;
+import com.cloud.network.nicira.LogicalRouterPortNSX;
+import com.cloud.network.nicira.LogicalSwitchNSX;
+import com.cloud.network.nicira.LogicalSwitchPortNSX;
 import com.cloud.network.nicira.NiciraNvpApi;
 import com.cloud.network.nicira.NiciraNvpApiException;
 import com.cloud.network.nicira.NiciraNvpTag;
@@ -66,7 +66,7 @@ public final class NiciraNvpConfigureSharedNetworkUuidCommandWrapper extends Com
         s_logger.info("Looking for Logical Switch " + logicalSwitchUuid + " display name");
         String logicalSwitchDisplayName;
         try{
-            List<LogicalSwitch> lSwitchList = niciraNvpApi.findLogicalSwitch(logicalSwitchUuid);
+            List<LogicalSwitchNSX> lSwitchList = niciraNvpApi.findLogicalSwitch(logicalSwitchUuid);
             if (lSwitchList != null){
                 if (lSwitchList.size() == 1){
                     logicalSwitchDisplayName = lSwitchList.get(0).getDisplayName();
@@ -96,9 +96,9 @@ public final class NiciraNvpConfigureSharedNetworkUuidCommandWrapper extends Com
 
         //Step 2: Create lRouterPort
         s_logger.debug("Creating Logical Router Port in Logical Router " + logicalRouterUuid);
-        LogicalRouterPort lRouterPort = null;
+        LogicalRouterPortNSX lRouterPort = null;
         try {
-            lRouterPort = new LogicalRouterPort();
+            lRouterPort = new LogicalRouterPortNSX();
             lRouterPort.setAdminStatusEnabled(true);
             lRouterPort.setDisplayName(niciraNvpResource.truncate(logicalSwitchDisplayName + "-uplink", NAME_MAX_LEN));
             lRouterPort.setTags(tags);
@@ -116,9 +116,9 @@ public final class NiciraNvpConfigureSharedNetworkUuidCommandWrapper extends Com
 
         //Step 3: Create lSwitchPort
         s_logger.debug("Creating Logical Switch Port in Logical Switch " + logicalSwitchUuid + " (" + logicalSwitchDisplayName + ")");
-        LogicalSwitchPort lSwitchPort = null;
+        LogicalSwitchPortNSX lSwitchPort = null;
         try {
-            lSwitchPort = new LogicalSwitchPort(niciraNvpResource.truncate("lrouter-uplink", NAME_MAX_LEN), tags, true);
+            lSwitchPort = new LogicalSwitchPortNSX(niciraNvpResource.truncate("lrouter-uplink", NAME_MAX_LEN), tags, true);
             lSwitchPort = niciraNvpApi.createLogicalSwitchPort(logicalSwitchUuid, lSwitchPort);
         }
         catch (NiciraNvpApiException e){
@@ -160,7 +160,7 @@ public final class NiciraNvpConfigureSharedNetworkUuidCommandWrapper extends Com
         return new ConfigureSharedNetworkUuidAnswer(command, true, "OK");
     }
 
-    private void cleanupLSwitchPort(String logicalSwitchUuid, LogicalSwitchPort lSwitchPort, NiciraNvpApi niciraNvpApi) {
+    private void cleanupLSwitchPort(String logicalSwitchUuid, LogicalSwitchPortNSX lSwitchPort, NiciraNvpApi niciraNvpApi) {
         s_logger.warn("Deleting previously created Logical Switch Port " + lSwitchPort.getUuid() + " (" + lSwitchPort.getDisplayName() + ") from Logical Switch " + logicalSwitchUuid);
         try {
             niciraNvpApi.deleteLogicalSwitchPort(logicalSwitchUuid, lSwitchPort.getUuid());
@@ -170,7 +170,7 @@ public final class NiciraNvpConfigureSharedNetworkUuidCommandWrapper extends Com
         s_logger.warn("Logical Switch Port " + lSwitchPort.getUuid() + " (" + lSwitchPort.getDisplayName() + ") successfully deleted");
     }
 
-    private void cleanupLRouterPort(String logicalRouterUuid, LogicalRouterPort lRouterPort, NiciraNvpApi niciraNvpApi) {
+    private void cleanupLRouterPort(String logicalRouterUuid, LogicalRouterPortNSX lRouterPort, NiciraNvpApi niciraNvpApi) {
         s_logger.warn("Deleting previously created Logical Router Port " + lRouterPort.getUuid() + " (" + lRouterPort.getDisplayName() + ") from Logical Router " + logicalRouterUuid + " and retrying");
         try {
             niciraNvpApi.deleteLogicalRouterPort(logicalRouterUuid, lRouterPort.getUuid());

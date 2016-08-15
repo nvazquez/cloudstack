@@ -26,7 +26,7 @@ import org.apache.log4j.Logger;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.CreateLogicalSwitchPortAnswer;
 import com.cloud.agent.api.CreateLogicalSwitchPortCommand;
-import com.cloud.network.nicira.LogicalSwitchPort;
+import com.cloud.network.nicira.LogicalSwitchPortNSX;
 import com.cloud.network.nicira.NiciraNvpApi;
 import com.cloud.network.nicira.NiciraNvpApiException;
 import com.cloud.network.nicira.VifAttachment;
@@ -51,8 +51,8 @@ public final class NiciraNvpCreateLogicalSwitchPortCommandWrapper extends Comman
         try {
             final NiciraNvpApi niciraNvpApi = niciraNvpResource.getNiciraNvpApi();
 
-            final LogicalSwitchPort logicalSwitchPort = niciraNvpUtilities.createLogicalSwitchPort(command);
-            final LogicalSwitchPort newPort = niciraNvpApi.createLogicalSwitchPort(logicalSwitchUuid, logicalSwitchPort);
+            final LogicalSwitchPortNSX logicalSwitchPort = niciraNvpUtilities.createLogicalSwitchPort(command);
+            final LogicalSwitchPortNSX newPort = niciraNvpApi.createLogicalSwitchPort(logicalSwitchUuid, logicalSwitchPort);
             try {
                 niciraNvpApi.updateLogicalSwitchPortAttachment(command.getLogicalSwitchUuid(), newPort.getUuid(), new VifAttachment(attachmentUuid));
             } catch (final NiciraNvpApiException ex) {

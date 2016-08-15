@@ -19,46 +19,35 @@
 
 package com.cloud.network.nicira;
 
+import java.util.List;
 
-/**
- *
- */
-public class LogicalRouter extends BaseNiciraNamedEntity {
+public class LogicalSwitchNSX extends BaseNSXEntity {
     public static final String REPLICATION_MODE_SERVICE = "service";
     public static final String REPLICATION_MODE_SOURCE = "source";
 
-    private final String type = "LogicalRouterConfig";
-    private RoutingConfig routingConfig;
-    private boolean distributed;
-    private boolean natSynchronizationEnabled;
+    private final String type = "LogicalSwitchConfig";
+    private boolean portIsolationEnabled;
+    private List<TransportZoneBinding> transportZones;
     private String replicationMode;
+
+    public boolean isPortIsolationEnabled() {
+        return portIsolationEnabled;
+    }
+
+    public void setPortIsolationEnabled(final boolean portIsolationEnabled) {
+        this.portIsolationEnabled = portIsolationEnabled;
+    }
 
     public String getType() {
         return type;
     }
 
-    public RoutingConfig getRoutingConfig() {
-        return routingConfig;
+    public List<TransportZoneBinding> getTransportZones() {
+        return transportZones;
     }
 
-    public void setRoutingConfig(final RoutingConfig routingConfig) {
-        this.routingConfig = routingConfig;
-    }
-
-    public boolean isDistributed() {
-        return distributed;
-    }
-
-    public void setDistributed(final boolean distributed) {
-        this.distributed = distributed;
-    }
-
-    public boolean isNatSynchronizationEnabled() {
-        return natSynchronizationEnabled;
-    }
-
-    public void setNatSynchronizationEnabled(final boolean natSynchronizationEnabled) {
-        this.natSynchronizationEnabled = natSynchronizationEnabled;
+    public void setTransportZones(final List<TransportZoneBinding> transportZones) {
+        this.transportZones = transportZones;
     }
 
     public String getReplicationMode() {

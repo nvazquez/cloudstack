@@ -21,7 +21,7 @@ package com.cloud.network.nicira;
 
 import java.util.List;
 
-public class LogicalRouterPort extends BaseNiciraNamedEntity {
+public class LogicalRouterPortNSX extends BaseNSXEntity {
     private Integer portno;
     private boolean adminStatusEnabled;
     private List<String> ipAddresses;

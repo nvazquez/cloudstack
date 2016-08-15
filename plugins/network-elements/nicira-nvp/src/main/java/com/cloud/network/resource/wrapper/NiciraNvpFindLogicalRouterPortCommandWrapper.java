@@ -28,7 +28,7 @@ import org.apache.log4j.Logger;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.FindLogicalRouterPortAnswer;
 import com.cloud.agent.api.FindLogicalRouterPortCommand;
-import com.cloud.network.nicira.LogicalRouterPort;
+import com.cloud.network.nicira.LogicalRouterPortNSX;
 import com.cloud.network.nicira.NiciraNvpApi;
 import com.cloud.network.nicira.NiciraNvpApiException;
 import com.cloud.network.resource.NiciraNvpResource;
@@ -50,7 +50,7 @@ public class NiciraNvpFindLogicalRouterPortCommandWrapper extends CommandWrapper
         s_logger.debug("Finding Logical Router Port in Logical Router " + logicalRouterUuid + " and attachmentLSwitchUuid " + attachmentLswitchUuid);
 
         try{
-            List<LogicalRouterPort> lRouterPorts = niciraNvpApi.findLogicalRouterPortByAttachmentLSwitchUuid(logicalRouterUuid, attachmentLswitchUuid);
+            List<LogicalRouterPortNSX> lRouterPorts = niciraNvpApi.findLogicalRouterPortByAttachmentLSwitchUuid(logicalRouterUuid, attachmentLswitchUuid);
             if (lRouterPorts.size() == 0) {
                 return new FindLogicalRouterPortAnswer(command, false, "Logical Router Port not found", null);
             } else {

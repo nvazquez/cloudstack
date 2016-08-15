@@ -16,35 +16,34 @@
 // specific language governing permissions and limitations
 // under the License.
 //
-
 package com.cloud.network.nicira;
 
 import java.io.Serializable;
+import java.util.List;
 
-import org.apache.commons.lang.builder.EqualsBuilder;
-import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
-public abstract class BaseNiciraEntity implements Serializable {
-    protected String href;
+public class BaseNiciraEntity implements Serializable {
+
     protected String schema;
-    protected String uuid;
+    protected String displayName;
+    protected List<NiciraNvpTag> tags;
 
-    public String getUuid() {
-        return uuid;
+    public String getDisplayName() {
+        return displayName;
     }
 
-    public void setUuid(final String uuid) {
-        this.uuid = uuid;
+    public void setDisplayName(final String displayName) {
+        this.displayName = displayName;
     }
 
-    public String getHref() {
-        return href;
+    public List<NiciraNvpTag> getTags() {
+        return tags;
     }
 
-    public void setHref(final String href) {
-        this.href = href;
+    public void setTags(final List<NiciraNvpTag> tags) {
+        this.tags = tags;
     }
 
     public String getSchema() {
@@ -60,26 +59,4 @@ public abstract class BaseNiciraEntity implements Serializable {
         return ReflectionToStringBuilder.reflectionToString(this, ToStringStyle.DEFAULT_STYLE, false);
     }
 
-    @Override
-    public int hashCode() {
-        return new HashCodeBuilder(17, 31)
-                .append(this.getClass())
-                .append(uuid)
-                .toHashCode();
-    }
-
-    @Override
-    public boolean equals(final Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (obj == this) {
-            return true;
-        }
-        if (!(this.getClass().isInstance(obj))) {
-            return false;
-        }
-        final BaseNiciraEntity another = (BaseNiciraEntity) obj;
-        return new EqualsBuilder().append(uuid, another.uuid).isEquals();
-    }
 }

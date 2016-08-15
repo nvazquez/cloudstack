@@ -31,9 +31,9 @@ import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.CreateLogicalRouterAnswer;
 import com.cloud.agent.api.CreateLogicalRouterCommand;
 import com.cloud.network.nicira.L3GatewayAttachment;
-import com.cloud.network.nicira.LogicalRouter;
-import com.cloud.network.nicira.LogicalRouterPort;
-import com.cloud.network.nicira.LogicalSwitchPort;
+import com.cloud.network.nicira.LogicalRouterNSX;
+import com.cloud.network.nicira.LogicalRouterPortNSX;
+import com.cloud.network.nicira.LogicalSwitchPortNSX;
 import com.cloud.network.nicira.Match;
 import com.cloud.network.nicira.NiciraNvpApi;
 import com.cloud.network.nicira.NiciraNvpApiException;
@@ -72,18 +72,18 @@ public final class NiciraNvpCreateLogicalRouterCommandWrapper extends CommandWra
 
         try {
             // Create the Router
-            LogicalRouter lrc = new LogicalRouter();
+            LogicalRouterNSX lrc = new LogicalRouterNSX();
             lrc.setDisplayName(niciraNvpResource.truncate(routerName, NAME_MAX_LEN));
             lrc.setTags(tags);
             lrc.setRoutingConfig(new SingleDefaultRouteImplicitRoutingConfig(new RouterNextHop(publicNetworkNextHopIp)));
             lrc = niciraNvpApi.createLogicalRouter(lrc);
 
             // store the switchport for rollback
-            LogicalSwitchPort lsp = null;
+            LogicalSwitchPortNSX lsp = null;
 
             try {
                 // Create the outside port for the router
-                LogicalRouterPort lrpo = new LogicalRouterPort();
+                LogicalRouterPortNSX lrpo = new LogicalRouterPortNSX();
                 lrpo.setAdminStatusEnabled(true);
                 lrpo.setDisplayName(niciraNvpResource.truncate(routerName + "-outside-port", NAME_MAX_LEN));
                 lrpo.setTags(tags);
@@ -100,7 +100,7 @@ public final class NiciraNvpCreateLogicalRouterCommandWrapper extends CommandWra
                 niciraNvpApi.updateLogicalRouterPortAttachment(lrc.getUuid(), lrpo.getUuid(), attachment);
 
                 // Create the inside port for the router
-                LogicalRouterPort lrpi = new LogicalRouterPort();
+                LogicalRouterPortNSX lrpi = new LogicalRouterPortNSX();
                 lrpi.setAdminStatusEnabled(true);
                 lrpi.setDisplayName(niciraNvpResource.truncate(routerName + "-inside-port", NAME_MAX_LEN));
                 lrpi.setTags(tags);
@@ -110,7 +110,7 @@ public final class NiciraNvpCreateLogicalRouterCommandWrapper extends CommandWra
                 lrpi = niciraNvpApi.createLogicalRouterPort(lrc.getUuid(), lrpi);
 
                 // Create the inside port on the lswitch
-                lsp = new LogicalSwitchPort(niciraNvpResource.truncate(routerName + "-inside-port", NAME_MAX_LEN), tags, true);
+                lsp = new LogicalSwitchPortNSX(niciraNvpResource.truncate(routerName + "-inside-port", NAME_MAX_LEN), tags, true);
                 lsp = niciraNvpApi.createLogicalSwitchPort(logicalSwitchUuid, lsp);
 
                 // Attach the inside router port to the lswitch port with a PatchAttachment

@@ -158,7 +158,7 @@ public class NiciraNvpApiIT {
 
     @Test
     public void testCRUDLogicalSwitch() throws Exception {
-        LogicalSwitch logicalSwitch = new LogicalSwitch();
+        LogicalSwitchNSX logicalSwitch = new LogicalSwitchNSX();
         logicalSwitch.setDisplayName("LogicalSwitch" + timestamp);
         logicalSwitch.setPortIsolationEnabled(true);
         logicalSwitch.setReplicationMode("service");
@@ -174,8 +174,8 @@ public class NiciraNvpApiIT {
         api.updateLogicalSwitch(logicalSwitch, logicalSwitch.getUuid());
 
         // Read them all
-        List<LogicalSwitch> logicalSwitches = api.findLogicalSwitch();
-        for (final LogicalSwitch iLogicalSwitch : logicalSwitches) {
+        List<LogicalSwitchNSX> logicalSwitches = api.findLogicalSwitch();
+        for (final LogicalSwitchNSX iLogicalSwitch : logicalSwitches) {
             if (iLogicalSwitch.getUuid().equalsIgnoreCase(logicalSwitch.getUuid())) {
                 assertEquals("Read a LogicalSwitch different from the one just created and updated", logicalSwitch, iLogicalSwitch);
             }
@@ -190,14 +190,14 @@ public class NiciraNvpApiIT {
         final List<NiciraNvpTag> tags = new ArrayList<NiciraNvpTag>();
         tags.add(new NiciraNvpTag("cs_account", "OwnerName"));
 
-        LogicalSwitchPort logicalSwitchPort = new LogicalSwitchPort("LSwitchPort" + timestamp, tags, true);
+        LogicalSwitchPortNSX logicalSwitchPort = new LogicalSwitchPortNSX("LSwitchPort" + timestamp, tags, true);
         logicalSwitchPort = api.createLogicalSwitchPort(logicalSwitch.getUuid(), logicalSwitchPort);
 
         logicalSwitchPort.setDisplayName("UpdatedLSwitchPort" + timestamp);
         api.updateLogicalSwitchPort(logicalSwitch.getUuid(), logicalSwitchPort);
 
-        final List<LogicalSwitchPort> logicalSwitchePorts = api.findLogicalSwitchPortsByUuid(logicalSwitch.getUuid(), logicalSwitchPort.getUuid());
-        for (final LogicalSwitchPort iLSwitchPort : logicalSwitchePorts) {
+        final List<LogicalSwitchPortNSX> logicalSwitchePorts = api.findLogicalSwitchPortsByUuid(logicalSwitch.getUuid(), logicalSwitchPort.getUuid());
+        for (final LogicalSwitchPortNSX iLSwitchPort : logicalSwitchePorts) {
             if (iLSwitchPort.getUuid().equalsIgnoreCase(logicalSwitchPort.getUuid())) {
                 assertEquals("Read a LogicalSwitchPort different from the one just created and updated", logicalSwitchPort, iLSwitchPort);
             }
@@ -219,11 +219,11 @@ public class NiciraNvpApiIT {
 
     @Test
     public void testCRUDLogicalRouter() {
-        LogicalRouter logicalRouter = new LogicalRouter();
+        LogicalRouterNSX logicalRouter = new LogicalRouterNSX();
         logicalRouter.setDisplayName("LogicalRouter" + timestamp);
         logicalRouter.setDistributed(true);
         logicalRouter.setNatSynchronizationEnabled(true);
-        logicalRouter.setReplicationMode(LogicalRouter.REPLICATION_MODE_SERVICE);
+        logicalRouter.setReplicationMode(LogicalRouterNSX.REPLICATION_MODE_SERVICE);
         final RoutingConfig routingConfig = new SingleDefaultRouteImplicitRoutingConfig(
                         new RouterNextHop("192.168.10.20"));
         logicalRouter.setRoutingConfig(routingConfig);
@@ -238,9 +238,9 @@ public class NiciraNvpApiIT {
             api.updateLogicalRouter(logicalRouter, logicalRouter.getUuid());
 
             // Read them all
-            List<LogicalRouter> logicalRouters = api.findLogicalRouter();
-            LogicalRouter lsInList = null;
-            for (final LogicalRouter iLogicalRouter : logicalRouters) {
+            List<LogicalRouterNSX> logicalRouters = api.findLogicalRouter();
+            LogicalRouterNSX lsInList = null;
+            for (final LogicalRouterNSX iLogicalRouter : logicalRouters) {
                 if (iLogicalRouter.getUuid().equalsIgnoreCase(logicalRouter.getUuid())) {
                     lsInList = iLogicalRouter;
                 }
@@ -258,7 +258,7 @@ public class NiciraNvpApiIT {
             final List<NiciraNvpTag> tags = new ArrayList<NiciraNvpTag>();
             tags.add(new NiciraNvpTag("cs_account", "OwnerName"));
 
-            LogicalRouterPort logicalRouterPort = new LogicalRouterPort();
+            LogicalRouterPortNSX logicalRouterPort = new LogicalRouterPortNSX();
             logicalRouterPort.setDisplayName("LRouterPort" + timestamp);
             logicalRouterPort.setTags(tags);
             logicalRouterPort.setAdminStatusEnabled(true);
@@ -273,8 +273,8 @@ public class NiciraNvpApiIT {
             logicalRouterPort.setDisplayName("UpdatedLRouterPort" + timestamp);
             api.updateLogicalRouterPort(logicalRouter.getUuid(), logicalRouterPort);
 
-            final List<LogicalRouterPort> logicalRouterePorts = api.findLogicalRouterPortsByUuid(logicalRouter.getUuid(), logicalRouterPort.getUuid());
-            for (final LogicalRouterPort iLRouterPort : logicalRouterePorts) {
+            final List<LogicalRouterPortNSX> logicalRouterePorts = api.findLogicalRouterPortsByUuid(logicalRouter.getUuid(), logicalRouterPort.getUuid());
+            for (final LogicalRouterPortNSX iLRouterPort : logicalRouterePorts) {
                 if (iLRouterPort.getUuid().equalsIgnoreCase(logicalRouterPort.getUuid())) {
                     assertEquals("Read a LogicalRouterPort different from the one just created and updated", logicalRouterPort, iLRouterPort);
                 }

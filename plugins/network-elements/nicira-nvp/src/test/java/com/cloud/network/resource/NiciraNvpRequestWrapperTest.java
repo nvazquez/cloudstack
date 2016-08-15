@@ -41,8 +41,8 @@ import com.cloud.agent.api.DeleteLogicalSwitchPortCommand;
 import com.cloud.agent.api.MaintainCommand;
 import com.cloud.agent.api.ReadyCommand;
 import com.cloud.agent.api.UpdateLogicalSwitchPortCommand;
-import com.cloud.network.nicira.LogicalRouterPort;
-import com.cloud.network.nicira.LogicalSwitch;
+import com.cloud.network.nicira.LogicalRouterPortNSX;
+import com.cloud.network.nicira.LogicalSwitchNSX;
 import com.cloud.network.nicira.NiciraNvpApi;
 import com.cloud.network.nicira.NiciraNvpApiException;
 import com.cloud.network.nicira.VifAttachment;
@@ -80,7 +80,7 @@ public class NiciraNvpRequestWrapperTest {
     public void testCreateLogicalSwitchCommandWrapper() {
         final NiciraNvpApi niciraNvpApi = Mockito.mock(NiciraNvpApi.class);
         final NiciraNvpUtilities niciraNvpUtilities = Mockito.mock(NiciraNvpUtilities.class);
-        final LogicalSwitch logicalSwitch = Mockito.mock(LogicalSwitch.class);
+        final LogicalSwitchNSX logicalSwitch = Mockito.mock(LogicalSwitchNSX.class);
 
         final String transportUuid = "d2e05a9e-7120-4487-a5fc-414ab36d9345";
         final String transportType = "stt";
@@ -138,9 +138,9 @@ public class NiciraNvpRequestWrapperTest {
     @Test
     public void testConfigurePublicIpsOnLogicalRouterCommand() {
         final NiciraNvpApi niciraNvpApi = Mockito.mock(NiciraNvpApi.class);
-        final LogicalRouterPort port1 = Mockito.mock(LogicalRouterPort.class);
+        final LogicalRouterPortNSX port1 = Mockito.mock(LogicalRouterPortNSX.class);
 
-        final List<LogicalRouterPort> listPorts = new ArrayList<LogicalRouterPort>();
+        final List<LogicalRouterPortNSX> listPorts = new ArrayList<LogicalRouterPortNSX>();
         listPorts.add(port1);
 
         final String logicalRouterUuid = "d2e05a9e-7120-4487-a5fc-414ab36d9345";

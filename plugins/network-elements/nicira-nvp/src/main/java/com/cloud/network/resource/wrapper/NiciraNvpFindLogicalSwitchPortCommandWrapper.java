@@ -26,7 +26,7 @@ import java.util.List;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.FindLogicalSwitchPortAnswer;
 import com.cloud.agent.api.FindLogicalSwitchPortCommand;
-import com.cloud.network.nicira.LogicalSwitchPort;
+import com.cloud.network.nicira.LogicalSwitchPortNSX;
 import com.cloud.network.nicira.NiciraNvpApi;
 import com.cloud.network.nicira.NiciraNvpApiException;
 import com.cloud.network.resource.NiciraNvpResource;
@@ -45,7 +45,7 @@ public final class NiciraNvpFindLogicalSwitchPortCommandWrapper extends CommandW
         final NiciraNvpApi niciraNvpApi = niciraNvpResource.getNiciraNvpApi();
 
         try {
-            final List<LogicalSwitchPort> ports = niciraNvpApi.findLogicalSwitchPortsByUuid(logicalSwitchUuid, logicalSwitchPortUuid);
+            final List<LogicalSwitchPortNSX> ports = niciraNvpApi.findLogicalSwitchPortsByUuid(logicalSwitchUuid, logicalSwitchPortUuid);
             if (ports.size() == 0) {
                 return new FindLogicalSwitchPortAnswer(command, false, "Logical switchport " + logicalSwitchPortUuid + " not found", null);
             } else {

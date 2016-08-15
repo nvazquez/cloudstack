@@ -27,7 +27,8 @@ import java.util.List;
 import com.cloud.agent.api.Answer;
 import com.cloud.agent.api.CreateLogicalSwitchAnswer;
 import com.cloud.agent.api.CreateLogicalSwitchCommand;
-import com.cloud.network.nicira.LogicalSwitch;
+import com.cloud.network.nicira.LogicalSwitchNSX;
+import com.cloud.network.nicira.LogicalSwitchNSXT;
 import com.cloud.network.nicira.NiciraNvpApi;
 import com.cloud.network.nicira.NiciraNvpApiException;
 import com.cloud.network.nicira.NiciraNvpTag;
@@ -45,25 +46,39 @@ public final class NiciraNvpCreateLogicalSwitchCommandWrapper extends CommandWra
     public Answer execute(final CreateLogicalSwitchCommand command, final NiciraNvpResource niciraNvpResource) {
         final NiciraNvpUtilities niciraNvpUtilities = niciraNvpResource.getNiciraNvpUtilities();
 
-        LogicalSwitch logicalSwitch = niciraNvpUtilities.createLogicalSwitch();
-        logicalSwitch.setDisplayName(niciraNvpResource.truncate("lswitch-" + command.getName(), NiciraNvpResource.NAME_MAX_LEN));
-        logicalSwitch.setPortIsolationEnabled(false);
-
-        // Set transport binding
-        final List<TransportZoneBinding> ltzb = new ArrayList<TransportZoneBinding>();
-        ltzb.add(new TransportZoneBinding(command.getTransportUuid(), command.getTransportType()));
-        logicalSwitch.setTransportZones(ltzb);
-
         // Tags set to scope cs_account and account name
         final List<NiciraNvpTag> tags = new ArrayList<NiciraNvpTag>();
         tags.add(new NiciraNvpTag("cs_account", command.getOwnerName()));
-        logicalSwitch.setTags(tags);
 
         try {
             final NiciraNvpApi niciraNvpApi = niciraNvpResource.getNiciraNvpApi();
-            logicalSwitch = niciraNvpApi.createLogicalSwitch(logicalSwitch);
-            final String switchUuid = logicalSwitch.getUuid();
-            return new CreateLogicalSwitchAnswer(command, true, "Logicalswitch " + switchUuid + " created", switchUuid);
+            String createdSwitchId;
+
+            if (niciraNvpResource.isNsxTransformers()){
+                String displayName = niciraNvpResource.truncate("lswitch-" + command.getName(), 255);
+                LogicalSwitchNSXT logicalSwitchNSXT = new LogicalSwitchNSXT(displayName, command.getTransportUuid(), LogicalSwitchNSXT.ADMIN_MODE_UP);
+                logicalSwitchNSXT.setTags(tags);
+
+                logicalSwitchNSXT = niciraNvpApi.createLogicalSwitch(logicalSwitchNSXT);
+                createdSwitchId = logicalSwitchNSXT.getId();
+            }
+            else {
+                LogicalSwitchNSX logicalSwitch = niciraNvpUtilities.createLogicalSwitch();
+                logicalSwitch.setDisplayName(niciraNvpResource.truncate("lswitch-" + command.getName(), NiciraNvpResource.NAME_MAX_LEN));
+                logicalSwitch.setPortIsolationEnabled(false);
+
+                // Set transport binding
+                final List<TransportZoneBinding> ltzb = new ArrayList<TransportZoneBinding>();
+                ltzb.add(new TransportZoneBinding(command.getTransportUuid(), command.getTransportType()));
+                logicalSwitch.setTransportZones(ltzb);
+
+                logicalSwitch.setTags(tags);
+
+                logicalSwitch = niciraNvpApi.createLogicalSwitch(logicalSwitch);
+                createdSwitchId = logicalSwitch.getUuid();
+            }
+
+            return new CreateLogicalSwitchAnswer(command, true, "Logicalswitch " + createdSwitchId + " created", createdSwitchId);
         } catch (final NiciraNvpApiException e) {
             final CommandRetryUtility retryUtility = niciraNvpResource.getRetryUtility();
             retryUtility.addRetry(command, NUM_RETRIES);

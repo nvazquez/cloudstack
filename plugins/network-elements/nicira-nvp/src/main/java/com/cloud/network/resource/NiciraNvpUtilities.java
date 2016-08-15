@@ -23,8 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.cloud.agent.api.CreateLogicalSwitchPortCommand;
-import com.cloud.network.nicira.LogicalSwitch;
-import com.cloud.network.nicira.LogicalSwitchPort;
+import com.cloud.network.nicira.LogicalSwitchNSX;
+import com.cloud.network.nicira.LogicalSwitchPortNSX;
 import com.cloud.network.nicira.NiciraNvpTag;
 import com.cloud.network.nicira.VifAttachment;
 
@@ -43,19 +43,19 @@ public class NiciraNvpUtilities {
         return instance;
     }
 
-    public LogicalSwitch createLogicalSwitch() {
-        final LogicalSwitch logicalSwitch = new LogicalSwitch();
+    public LogicalSwitchNSX createLogicalSwitch() {
+        final LogicalSwitchNSX logicalSwitch = new LogicalSwitchNSX();
         return logicalSwitch;
     }
 
-    public LogicalSwitchPort createLogicalSwitchPort(final CreateLogicalSwitchPortCommand command) {
+    public LogicalSwitchPortNSX createLogicalSwitchPort(final CreateLogicalSwitchPortCommand command) {
         final String attachmentUuid = command.getAttachmentUuid();
 
         // Tags set to scope cs_account and account name
         final List<NiciraNvpTag> tags = new ArrayList<NiciraNvpTag>();
         tags.add(new NiciraNvpTag("cs_account", command.getOwnerName()));
 
-        final LogicalSwitchPort logicalSwitchPort = new LogicalSwitchPort(attachmentUuid, tags, true);
+        final LogicalSwitchPortNSX logicalSwitchPort = new LogicalSwitchPortNSX(attachmentUuid, tags, true);
         return logicalSwitchPort;
     }
 
