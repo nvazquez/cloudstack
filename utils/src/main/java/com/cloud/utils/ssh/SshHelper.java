@@ -23,6 +23,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import com.trilead.ssh2.ChannelCondition;
@@ -195,6 +197,10 @@ public class SshHelper {
             }
 
             String result = sbResult.toString();
+
+            if (StringUtils.isBlank(result)) {
+                result = IOUtils.toString(stdout);
+            }
 
             if (sess.getExitStatus() == null) {
                 //Exit status is NOT available. Returning failure result.
