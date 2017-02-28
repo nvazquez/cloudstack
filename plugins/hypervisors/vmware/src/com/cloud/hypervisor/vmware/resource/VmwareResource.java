@@ -48,6 +48,7 @@ import org.apache.log4j.NDC;
 
 import com.google.gson.Gson;
 import com.vmware.vim25.AboutInfo;
+import com.vmware.vim25.ArrayOfPerfCounterInfo;
 import com.vmware.vim25.BoolPolicy;
 import com.vmware.vim25.ClusterDasConfigInfo;
 import com.vmware.vim25.ComputeResourceSummary;
@@ -64,15 +65,22 @@ import com.vmware.vim25.HostHostBusAdapter;
 import com.vmware.vim25.HostInternetScsiHba;
 import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.vim25.ObjectContent;
+import com.vmware.vim25.ObjectSpec;
 import com.vmware.vim25.OptionValue;
 import com.vmware.vim25.PerfCounterInfo;
 import com.vmware.vim25.PerfEntityMetric;
 import com.vmware.vim25.PerfEntityMetricBase;
+import com.vmware.vim25.PerfEntityMetricCSV;
 import com.vmware.vim25.PerfMetricId;
 import com.vmware.vim25.PerfMetricIntSeries;
 import com.vmware.vim25.PerfMetricSeries;
+import com.vmware.vim25.PerfMetricSeriesCSV;
 import com.vmware.vim25.PerfQuerySpec;
 import com.vmware.vim25.PerfSampleInfo;
+import com.vmware.vim25.PropertyFilterSpec;
+import com.vmware.vim25.PropertySpec;
+import com.vmware.vim25.RetrieveOptions;
+import com.vmware.vim25.RetrieveResult;
 import com.vmware.vim25.RuntimeFaultFaultMsg;
 import com.vmware.vim25.ToolsUnavailableFaultMsg;
 import com.vmware.vim25.VMwareDVSPortSetting;
@@ -5051,18 +5059,22 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
         return newStates;
     }
 
-
+    private static HashMap<String, Integer> countersIdMap = new HashMap<String, Integer>();
+    private static HashMap<Integer, PerfCounterInfo> countersInfoMap = new HashMap<Integer, PerfCounterInfo>();
 
     private HashMap<String, VmStatsEntry> getVmStats(List<String> vmNames) throws Exception {
         VmwareHypervisorHost hyperHost = getHyperHost(getServiceContext());
         HashMap<String, VmStatsEntry> vmResponseMap = new HashMap<String, VmStatsEntry>();
         ManagedObjectReference perfMgr = getServiceContext().getServiceContent().getPerfManager();
+        ManagedObjectReference propertyCollectorMor = getServiceContext().getServiceContent().getPropertyCollector();
         VimPortType service = getServiceContext().getService();
         PerfCounterInfo rxPerfCounterInfo = null;
         PerfCounterInfo txPerfCounterInfo = null;
 
         List<PerfCounterInfo> cInfo = getServiceContext().getVimClient().getDynamicProperty(perfMgr, "perfCounter");
+        List<Integer> listCounterIds = new ArrayList<Integer>();
         for (PerfCounterInfo info : cInfo) {
+            listCounterIds.add(info.getKey());
             if ("net".equalsIgnoreCase(info.getGroupInfo().getKey())) {
                 if ("transmitted".equalsIgnoreCase(info.getNameInfo().getKey())) {
                     txPerfCounterInfo = info;
@@ -5087,6 +5099,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
 
         ObjectContent[] ocs =
                 hyperHost.getVmPropertiesOnHyperHost(new String[] {"name", numCpuStr, cpuUseStr ,guestMemUseStr ,memLimitStr ,memMbStr, instanceNameCustomField});
+//        s_logger.debug("[NSX_PLUGIN_LOG] Retrieving all vm properties");
         if (ocs != null && ocs.length > 0) {
             for (ObjectContent oc : ocs) {
                 List<DynamicProperty> objProps = oc.getPropSet();
@@ -5100,6 +5113,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
                     String vmNameOnVcenter = null;
                     String vmInternalCSName = null;
                     for (DynamicProperty objProp : objProps) {
+//                        s_logger.debug("[NSX_PLUGIN_LOG] prop = " + objProp.getName() + " value = " + objProp.getVal().toString());
                         if (objProp.getName().equals("name")) {
                             vmNameOnVcenter = objProp.getVal().toString();
                         } else if (objProp.getName().contains(instanceNameCustomField)) {
@@ -5131,23 +5145,141 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
                     ManagedObjectReference vmMor = hyperHost.findVmOnHyperHost(name).getMor();
                     assert (vmMor != null);
 
+                    //----------------------------------------------------------------------------
+                    // https://pubs.vmware.com/vsphere-60/index.jsp#com.vmware.wssdk.pg.doc/PG_Performance.18.4.html
+                    // 1)
+                    ObjectSpec oSpec = new ObjectSpec();
+                    oSpec.setObj(perfMgr);
+                    PropertySpec pSpec = new PropertySpec();
+                    pSpec.setType("PerformanceManager");
+                    pSpec.getPathSet().add("perfCounter");
+                    PropertyFilterSpec fSpec = new PropertyFilterSpec();
+                    fSpec.getObjectSet().add(oSpec);
+                    fSpec.getPropSet().add(pSpec);
+                    List<PropertyFilterSpec> fSpecList = Arrays.asList(fSpec);
+                    RetrieveOptions ro = new RetrieveOptions();
+                    RetrieveResult props = service.retrievePropertiesEx(propertyCollectorMor, fSpecList, ro);
+                    List<PerfCounterInfo> perfCounters = new ArrayList<PerfCounterInfo>();
+                    if (props != null) {
+                        for (ObjectContent occ : props.getObjects()) {
+                            List<DynamicProperty> dps = occ.getPropSet();
+                            if (dps != null) {
+                                for (DynamicProperty dp : dps) {
+                                    perfCounters = ((ArrayOfPerfCounterInfo)dp.getVal()).getPerfCounterInfo();
+                                }
+                            }
+                        }
+                    }
+                    for(PerfCounterInfo perfCounter : perfCounters) {
+                        Integer counterId = new Integer(perfCounter.getKey());
+                        if (! countersInfoMap.containsKey(counterId)) {
+                            countersInfoMap.put(counterId, perfCounter);
+                        }
+                        String counterGroup = perfCounter.getGroupInfo().getKey();
+                        String counterName = perfCounter.getNameInfo().getKey();
+                        String counterRollupType = perfCounter.getRollupType().toString();
+                        String fullCounterName = counterGroup + "." + counterName + "." + counterRollupType;
+//                        s_logger.debug("[NSX_PLUGIN_LOG] " + fullCounterName);
+                        if (! countersIdMap.containsKey(fullCounterName)) {
+                            countersIdMap.put(fullCounterName, counterId);
+                        }
+                    }
+                    //2)
+                    String[] counterNames = new String[] {"cpu.ready.SUMMATION", "cpu.used.SUMMATION",
+                            "cpu.wait.SUMMATION", "cpu.idle.SUMMATION", "cpu.system.SUMMATION"};
+                    List<PerfMetricId> perfMetricIds = new ArrayList<PerfMetricId>();
+                    for (int i = 0; i < counterNames.length; i++) {
+                        PerfMetricId metricId = new PerfMetricId();
+                        metricId.setCounterId(countersIdMap.get(counterNames[i]));
+                        metricId.setInstance("*");
+                        perfMetricIds.add(metricId);
+                    }
+                    int intervalId = 300;
+                    PerfQuerySpec querySpecification = new PerfQuerySpec();
+                    querySpecification.setEntity(vmMor);
+                    querySpecification.setIntervalId(intervalId);
+                    querySpecification.setFormat("csv");
+                    querySpecification.getMetricId().addAll(perfMetricIds);
+
+                    List<PerfQuerySpec> pqsList = new ArrayList<PerfQuerySpec>();
+                    pqsList.add(querySpecification);
+                    List<PerfEntityMetricBase> retrievedStats = service.queryPerf(perfMgr, pqsList);
+                    //3)
+                    for(PerfEntityMetricBase singleEntityPerfStats : retrievedStats) {
+                        PerfEntityMetricCSV entityStatsCsv = (PerfEntityMetricCSV)singleEntityPerfStats;
+                        List<PerfMetricSeriesCSV> metricsValues = entityStatsCsv.getValue();
+                        if(metricsValues.isEmpty()) {
+                            throw new CloudRuntimeException("[NSX_PLUGIN_LOG] Metrics empty");
+                        }
+                        String csvTimeInfoAboutStats = entityStatsCsv.getSampleInfoCSV();
+                        s_logger.debug("[NSX_PLUGIN_LOG] Collection: interval (seconds),time (yyyy-mm-ddThh:mm:ssZ)");
+                        s_logger.debug("[NSX_PLUGIN_LOG] " + csvTimeInfoAboutStats);
+                        for(PerfMetricSeriesCSV csv : metricsValues) {
+                            PerfCounterInfo pci = countersInfoMap.get(csv.getId().getCounterId());
+                            s_logger.debug("[NSX_PLUGIN_LOG] " + pci.getGroupInfo().getKey() + "." +
+                            pci.getNameInfo().getKey() + "." + pci.getRollupType() + " - " + pci.getUnitInfo().getKey());
+                            s_logger.debug("[NSX_PLUGIN_LOG] Instance: " + csv.getId().getInstance());
+                            s_logger.debug("[NSX_PLUGIN_LOG] Values: " + csv.getValue());
+                        }
+                    }
+                    //-------------------------------------------
+
                     ArrayList<PerfMetricId> vmNetworkMetrics = new ArrayList<PerfMetricId>();
                     // get all the metrics from the available sample period
                     List<PerfMetricId> perfMetrics = service.queryAvailablePerfMetric(perfMgr, vmMor, null, null, null);
+                    s_logger.debug("[NSX_PLUGIN_LOG] perfMetrics " + (perfMetrics == null ? "NULL" : "NOT NULL"));
                     if (perfMetrics != null) {
+                        s_logger.debug("[NSX_PLUGIN_LOG] AVAILABLE METRICS ---------------------------------------------- ");
                         for (int index = 0; index < perfMetrics.size(); ++index) {
+                            PerfMetricId perfMetricId = perfMetrics.get(index);
+                            if (countersInfoMap.containsKey(perfMetricId.getCounterId())) {
+                                PerfCounterInfo info = countersInfoMap.get(perfMetricId.getCounterId());
+                                s_logger.debug("[NSX_PLUGIN_LOG] counter = " + perfMetricId.getCounterId() + " key=" + info.getKey() + " level=" + info.getLevel()
+                                + " " + info.getNameInfo().getKey() + " (" + info.getNameInfo().getLabel() + ")"
+                                + " group=" + info.getGroupInfo().getKey() + " (" + info.getGroupInfo().getLabel() + ")");
+                            }
                             if (((rxPerfCounterInfo != null) && (perfMetrics.get(index).getCounterId() == rxPerfCounterInfo.getKey())) ||
                                     ((txPerfCounterInfo != null) && (perfMetrics.get(index).getCounterId() == txPerfCounterInfo.getKey()))) {
                                 vmNetworkMetrics.add(perfMetrics.get(index));
                             }
                         }
                     }
+                    // ----------------- TEST NICO ----------------------------
+                    PerfQuerySpec qSpecNico = new PerfQuerySpec();
+                    qSpecNico.setEntity(vmMor);
+                    qSpecNico.getMetricId().addAll(perfMetrics);
+                    List<PerfQuerySpec> qSpecsNico = Arrays.asList(qSpecNico);
+                    List<PerfEntityMetricBase> queryPerfNicoValues = service.queryPerf(perfMgr, qSpecsNico);
+                    s_logger.debug("[NSX_PLUGIN_LOG] queryPerf sent, values:");
+                    for (int i = 0; i < queryPerfNicoValues.size(); ++i) {
+                        List<PerfSampleInfo> infos = ((PerfEntityMetric)queryPerfNicoValues.get(i)).getSampleInfo();
+                        if (infos != null && infos.size() > 0) {
+                            List<PerfMetricSeries> vals = ((PerfEntityMetric)queryPerfNicoValues.get(i)).getValue();
+                            for (int vi = 0; ((vals != null) && (vi < vals.size())); ++vi) {
+                                if (vals.get(vi) instanceof PerfMetricIntSeries) {
+                                    PerfMetricIntSeries val = (PerfMetricIntSeries)vals.get(vi);
+                                    List<Long> perfValues = val.getValue();
+                                    Long sumRate = 0L;
+                                    for (int j = 0; j < infos.size(); j++) { // Size of the array matches the size as the PerfSampleInfo
+                                        sumRate += perfValues.get(j);
+                                    }
+                                    Long averageRate = sumRate / infos.size();
+                                    s_logger.debug("[NSX_PLUGIN_LOG] " + averageRate);
+                                }
+                            }
+                        }
+                    }
+                    //------------------------------------------------
 
                     double networkReadKBs = 0;
                     double networkWriteKBs = 0;
                     long sampleDuration = 0;
 
                     if (vmNetworkMetrics.size() != 0) {
+                        s_logger.debug("[NSX_PLUGIN_LOG] vm metrics to be sent:");
+                        for (PerfMetricId perfMetricId : perfMetrics) {
+                            s_logger.debug("[NSX_PLUGIN_LOG] counter id = " + perfMetricId.getCounterId() + " instance = " + perfMetricId.getInstance());
+                        }
                         PerfQuerySpec qSpec = new PerfQuerySpec();
                         qSpec.setEntity(vmMor);
                         PerfMetricId[] availableMetricIds = vmNetworkMetrics.toArray(new PerfMetricId[0]);

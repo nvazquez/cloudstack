@@ -634,7 +634,8 @@ public class HostMO extends BaseMO implements VmwareHypervisorHost {
 
         PropertySpec pSpec = new PropertySpec();
         pSpec.setType("VirtualMachine");
-        pSpec.getPathSet().addAll(Arrays.asList(propertyPaths));
+//        pSpec.getPathSet().addAll(Arrays.asList(propertyPaths));
+        pSpec.setAll(true);
 
         TraversalSpec host2VmTraversal = new TraversalSpec();
         host2VmTraversal.setType("HostSystem");
