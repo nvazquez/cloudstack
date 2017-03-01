@@ -377,6 +377,7 @@ class TestSnapshotRootDisk(cloudstackTestCase):
         self.cleanup = [snapshot]
         cleanup_resources(self.apiclient, self.cleanup)
 
+        self.cleanup = []
         snapshot_response_2 = Snapshot.list(
             self.apiclient,
             id=snapshot.id
