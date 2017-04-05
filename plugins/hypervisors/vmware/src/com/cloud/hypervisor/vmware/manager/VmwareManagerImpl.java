@@ -40,12 +40,14 @@ import org.apache.log4j.Logger;
 import com.vmware.vim25.AboutInfo;
 import com.vmware.vim25.ManagedObjectReference;
 
+import org.apache.cloudstack.api.command.admin.host.ListHostsCmd;
 import org.apache.cloudstack.api.command.admin.zone.AddVmwareDcCmd;
 import org.apache.cloudstack.api.command.admin.zone.ListVmwareDcsCmd;
 import org.apache.cloudstack.api.command.admin.zone.RemoveVmwareDcCmd;
 import org.apache.cloudstack.engine.subsystem.api.storage.DataStore;
 import org.apache.cloudstack.engine.subsystem.api.storage.DataStoreManager;
 import org.apache.cloudstack.framework.config.dao.ConfigurationDao;
+import org.apache.cloudstack.managed.context.ManagedContextRunnable;
 import org.apache.cloudstack.utils.identity.ManagementServerNode;
 
 import com.cloud.agent.AgentManager;
@@ -122,12 +124,14 @@ import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.utils.script.Script;
 import com.cloud.utils.ssh.SshHelper;
 import com.cloud.vm.DomainRouterVO;
+import com.google.gson.Gson;
 
 public class VmwareManagerImpl extends ManagerBase implements VmwareManager, VmwareStorageMount, Listener, VmwareDatacenterService {
     private static final Logger s_logger = Logger.getLogger(VmwareManagerImpl.class);
 
     private static final int STARTUP_DELAY = 60000;                 // 60 seconds
     private static final long DEFAULT_HOST_SCAN_INTERVAL = 600000;     // every 10 minutes
+    private static final long DEFAULT_DRS_INTERVAL = 300000; // 5 minutes
 
     private long _hostScanInterval = DEFAULT_HOST_SCAN_INTERVAL;
     private int _timeout;
@@ -199,6 +203,7 @@ public class VmwareManagerImpl extends ManagerBase implements VmwareManager, Vmw
     private final GlobalLock _exclusiveOpLock = GlobalLock.getInternLock("vmware.exclusive.op");
 
     private final ScheduledExecutorService _hostScanScheduler = Executors.newScheduledThreadPool(1, new NamedThreadFactory("Vmware-Host-Scan"));
+    private final ScheduledExecutorService _drsScheduler = Executors.newScheduledThreadPool(1, new NamedThreadFactory("Vmware-DRS"));
 
     public VmwareManagerImpl() {
         _storageMgr = new VmwareStorageManagerImpl(this);
@@ -310,9 +315,23 @@ public class VmwareManagerImpl extends ManagerBase implements VmwareManager, Vmw
         return true;
     }
 
+    class VmwareDRS extends ManagedContextRunnable {
+        @Override
+        protected void runInContext() {
+            s_logger.debug("Vmware DRS is running...");
+            ListHostsCmd cmd = new ListHostsCmd();
+            cmd.setType("routing");
+            cmd.configure();
+            cmd.execute();
+            Object responseObject = cmd.getResponseObject();
+            s_logger.debug(new Gson().toJson(responseObject));
+        }
+    }
+
     @Override
     public boolean start() {
         _hostScanScheduler.scheduleAtFixedRate(getHostScanTask(), STARTUP_DELAY, _hostScanInterval, TimeUnit.MILLISECONDS);
+        _drsScheduler.scheduleWithFixedDelay(new VmwareDRS(), STARTUP_DELAY, DEFAULT_DRS_INTERVAL, TimeUnit.MILLISECONDS);
 
         startupCleanup(_mountParent);
         return true;
@@ -326,6 +345,14 @@ public class VmwareManagerImpl extends ManagerBase implements VmwareManager, Vmw
         } catch (InterruptedException e) {
             s_logger.debug("[ignored] interupted while stopping<:/.");
         }
+
+        _drsScheduler.shutdownNow();
+        try {
+            _drsScheduler.awaitTermination(10000, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            s_logger.debug("Exception waiting for Vmware DRS tasks termination: " + e.getMessage());
+        }
+
 
         shutdownCleanup();
         return true;
