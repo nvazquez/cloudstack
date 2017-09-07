@@ -657,6 +657,10 @@ public class ApiConstants {
     public static final String DESTINATION_ZONE_ID_LIST = "destzoneids";
     public static final String ADMIN = "admin";
 
+    //Bypass secondary storage
+    public static final String BYPASS_TEMPLATE = "bypass";
+    public static final String POOL_ID = "poolid";
+
     public enum HostDetails {
         all, capacity, events, stats, min;
     }

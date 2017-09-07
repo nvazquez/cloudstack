@@ -112,6 +112,7 @@ import org.apache.cloudstack.storage.template.DownloadManagerImpl.ZfsPathParser;
 import org.apache.cloudstack.storage.template.UploadEntity;
 import org.apache.cloudstack.storage.template.UploadManager;
 import org.apache.cloudstack.storage.template.UploadManagerImpl;
+import org.apache.cloudstack.storage.to.PrimaryDataStoreTO;
 import org.apache.cloudstack.storage.to.SnapshotObjectTO;
 import org.apache.cloudstack.storage.to.TemplateObjectTO;
 import org.apache.cloudstack.storage.to.VolumeObjectTO;
@@ -798,8 +799,9 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
     }
 
     private Answer execute(DownloadCommand cmd) {
+        s_logger.debug("Executing download command");
         DataStoreTO dstore = cmd.getDataStore();
-        if (dstore instanceof NfsTO || dstore instanceof S3TO) {
+        if (dstore instanceof NfsTO || dstore instanceof S3TO || dstore instanceof PrimaryDataStoreTO) {
             return _dlMgr.handleDownloadCommand(this, cmd);
         } else if (dstore instanceof SwiftTO) {
             return registerTemplateOnSwift(cmd);

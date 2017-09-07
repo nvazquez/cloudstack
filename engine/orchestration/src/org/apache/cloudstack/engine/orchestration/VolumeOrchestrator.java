@@ -31,7 +31,6 @@ import javax.inject.Inject;
 import javax.naming.ConfigurationException;
 
 import org.apache.log4j.Logger;
-
 import org.apache.cloudstack.engine.orchestration.service.VolumeOrchestrationService;
 import org.apache.cloudstack.engine.subsystem.api.storage.ChapInfo;
 import org.apache.cloudstack.engine.subsystem.api.storage.DataObject;
@@ -711,16 +710,24 @@ public class VolumeOrchestrator extends ManagerBase implements VolumeOrchestrati
     public DiskProfile allocateTemplatedVolume(Type type, String name, DiskOffering offering, Long rootDisksize, Long minIops, Long maxIops, VirtualMachineTemplate template, VirtualMachine vm, Account owner) {
         assert (template.getFormat() != ImageFormat.ISO) : "ISO is not a template really....";
 
-        Long size = _tmpltMgr.getTemplateSize(template.getId(), vm.getDataCenterId());
-        if (rootDisksize != null ) {
-            rootDisksize = rootDisksize * 1024 * 1024 * 1024;
-            if (rootDisksize > size) {
-                s_logger.debug("Using root disk size of " + rootDisksize + " Bytes for volume " + name);
-                size = rootDisksize;
-            } else {
-                s_logger.debug("Using root disk size of " + size + " Bytes for volume " + name + "since specified root disk size of " + rootDisksize + " Bytes is smaller than template");
+        TemplateDataStoreVO tmpl = _vmTemplateStoreDao.findByTemplate(template.getId(), DataStoreRole.Image);
+        Long size = null;
+        if (tmpl.isBypass()) {
+            size = 0L;
+        }
+        else {
+            size = _tmpltMgr.getTemplateSize(template.getId(), vm.getDataCenterId());
+            if (rootDisksize != null ) {
+                rootDisksize = rootDisksize * 1024 * 1024 * 1024;
+                if (rootDisksize > size) {
+                    s_logger.debug("Using root disk size of " + rootDisksize + " Bytes for volume " + name);
+                    size = rootDisksize;
+                } else {
+                    s_logger.debug("Using root disk size of " + size + " Bytes for volume " + name + "since specified root disk size of " + rootDisksize + " Bytes is smaller than template");
+                }
             }
         }
+        s_logger.debug("Volume size " + size);
 
         minIops = minIops != null ? minIops : offering.getMinIops();
         maxIops = maxIops != null ? maxIops : offering.getMaxIops();
@@ -1284,7 +1291,15 @@ public class VolumeOrchestrator extends ManagerBase implements VolumeOrchestrati
 
                 future = volService.createVolumeAsync(volume, destPool);
             } else {
-                TemplateInfo templ = tmplFactory.getReadyTemplateOnImageStore(templateId, dest.getDataCenter().getId());
+                boolean bypass = tmplFactory.isTemplateBypassSecondaryStorage(templateId);
+                TemplateInfo templ = null;
+                if (! bypass) {
+                    templ = tmplFactory.getReadyTemplateOnImageStore(templateId, dest.getDataCenter().getId());
+                }
+                else {
+                    // DOwnload to PS
+                    templ = tmplFactory.getReadyTemplateBypassSecondaryStorage(templateId, destPool, dest.getHost());
+                }
 
                 if (templ == null) {
                     s_logger.debug("can't find ready template: " + templateId + " for data center " + dest.getDataCenter().getId());

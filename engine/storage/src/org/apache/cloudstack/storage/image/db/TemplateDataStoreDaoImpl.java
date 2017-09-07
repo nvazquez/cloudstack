@@ -67,6 +67,7 @@ public class TemplateDataStoreDaoImpl extends GenericDaoBase<TemplateDataStoreVO
     private SearchBuilder<TemplateDataStoreVO> storeTemplateDownloadStatusSearch;
     private SearchBuilder<TemplateDataStoreVO> downloadTemplateSearch;
     private SearchBuilder<TemplateDataStoreVO> uploadTemplateStateSearch;
+    private SearchBuilder<TemplateDataStoreVO> bypassTemplateStateSearch;
     private SearchBuilder<VMTemplateVO> templateOnlySearch;
     private static final String EXPIRE_DOWNLOAD_URLS_FOR_ZONE = "update template_store_ref set download_url_created=? where download_url_created is not null and store_id in (select id from image_store where data_center_id=?)";
 
@@ -142,6 +143,12 @@ public class TemplateDataStoreDaoImpl extends GenericDaoBase<TemplateDataStoreVO
         downloadTemplateSearch.and("download_url_created", downloadTemplateSearch.entity().getExtractUrlCreated(), Op.NNULL);
         downloadTemplateSearch.and("destroyed", downloadTemplateSearch.entity().getDestroyed(), SearchCriteria.Op.EQ);
         downloadTemplateSearch.done();
+
+        bypassTemplateStateSearch = createSearchBuilder();
+        bypassTemplateStateSearch.and("template_id", bypassTemplateStateSearch.entity().getTemplateId(), SearchCriteria.Op.EQ);
+        bypassTemplateStateSearch.and("bypass", bypassTemplateStateSearch.entity().isBypass(), SearchCriteria.Op.EQ);
+        bypassTemplateStateSearch.and("destroyed", bypassTemplateStateSearch.entity().getDestroyed(), SearchCriteria.Op.EQ);
+        bypassTemplateStateSearch.and("store_id", bypassTemplateStateSearch.entity().getDataStoreId(), SearchCriteria.Op.NULL);
 
         templateOnlySearch = _tmpltDao.createSearchBuilder();
         templateOnlySearch.and("states", templateOnlySearch.entity().getState(), SearchCriteria.Op.IN);
@@ -548,5 +555,20 @@ public class TemplateDataStoreDaoImpl extends GenericDaoBase<TemplateDataStoreVO
         sc.setJoinParameters("templateOnlySearch", "states", (Object[])states);
         sc.setParameters("destroyed", false);
         return listIncludingRemovedBy(sc);
+    }
+
+    private TemplateDataStoreVO findBypassTemplate(long templateId) {
+        SearchCriteria<TemplateDataStoreVO> sc = bypassTemplateStateSearch.create();
+        sc.setParameters("template_id", templateId);
+        sc.setParameters("bypass", true);
+        sc.setParameters("destroyed", false);
+        return findOneBy(sc);
+    }
+
+    @Override
+    public boolean persistBypassDataStore(long templateId, long storeId) {
+        TemplateDataStoreVO tmpl = findBypassTemplate(templateId);
+        tmpl.setDataStoreId(storeId);
+        return update(tmpl.getId(), tmpl);
     }
 }

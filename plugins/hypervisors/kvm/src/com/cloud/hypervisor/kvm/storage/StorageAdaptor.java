@@ -19,6 +19,7 @@ package com.cloud.hypervisor.kvm.storage;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.cloudstack.bypass.download.manager.DownloadBypassedTemplateCommand.DownloadProtocol;
 import org.apache.cloudstack.utils.qemu.QemuImg.PhysicalDiskFormat;
 
 import com.cloud.storage.Storage;
@@ -72,4 +73,5 @@ public interface StorageAdaptor {
 
     public boolean createFolder(String uuid, String path);
 
+    public BypassTemplateInfo downloadTemplate(String downloadUrl, String poolUuid, DownloadProtocol protocol);
 }

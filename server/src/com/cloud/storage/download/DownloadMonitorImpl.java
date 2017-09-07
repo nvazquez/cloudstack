@@ -50,11 +50,14 @@ import com.cloud.agent.AgentManager;
 import com.cloud.agent.api.storage.DownloadAnswer;
 import com.cloud.utils.net.Proxy;
 import com.cloud.configuration.Config;
+import com.cloud.storage.DataStoreRole;
 import com.cloud.storage.RegisterVolumePayload;
 import com.cloud.storage.Storage.ImageFormat;
+import com.cloud.storage.VMTemplateStoragePoolVO;
 import com.cloud.storage.VMTemplateStorageResourceAssoc.Status;
 import com.cloud.storage.Volume;
 import com.cloud.storage.dao.VMTemplateDao;
+import com.cloud.storage.dao.VMTemplatePoolDao;
 import com.cloud.storage.dao.VolumeDao;
 import com.cloud.storage.template.TemplateConstants;
 import com.cloud.storage.upload.UploadListener;
@@ -81,6 +84,8 @@ public class DownloadMonitorImpl extends ManagerBase implements DownloadMonitor 
     private ConfigurationDao _configDao;
     @Inject
     private EndPointSelector _epSelector;
+    @Inject
+    private VMTemplatePoolDao templatePoolDao;
 
     private String _copyAuthPasswd;
     private String _proxy = null;
@@ -117,10 +122,17 @@ public class DownloadMonitorImpl extends ManagerBase implements DownloadMonitor 
         return true;
     }
 
-    public boolean isTemplateUpdateable(Long templateId, Long storeId) {
-        List<TemplateDataStoreVO> downloadsInProgress =
-            _vmTemplateStoreDao.listByTemplateStoreDownloadStatus(templateId, storeId, Status.DOWNLOAD_IN_PROGRESS, Status.DOWNLOADED);
-        return (downloadsInProgress.size() == 0);
+    public boolean isTemplateUpdateable(Long templateId, Long storeId, DataStoreRole dataStoreRole) {
+        if (dataStoreRole.equals(DataStoreRole.Image)) {
+            List<TemplateDataStoreVO> downloadsInProgress =
+                    _vmTemplateStoreDao.listByTemplateStoreDownloadStatus(templateId, storeId, Status.DOWNLOAD_IN_PROGRESS, Status.DOWNLOADED);
+            return (downloadsInProgress.size() == 0);
+        }
+        else if (dataStoreRole.equals(DataStoreRole.Primary)) {
+            List<VMTemplateStoragePoolVO> inProgress = templatePoolDao.listByTemplateStatus(templateId, Status.DOWNLOAD_IN_PROGRESS);
+            return (inProgress.size() == 0);
+        }
+        return false;
     }
 
     private void initiateTemplateDownload(DataObject template, AsyncCompletionCallback<DownloadAnswer> callback) {
@@ -128,52 +140,102 @@ public class DownloadMonitorImpl extends ManagerBase implements DownloadMonitor 
         TemplateDataStoreVO vmTemplateStore = null;
         DataStore store = template.getDataStore();
 
-        vmTemplateStore = _vmTemplateStoreDao.findByStoreTemplate(store.getId(), template.getId());
-        if (vmTemplateStore == null) {
-            vmTemplateStore =
-                new TemplateDataStoreVO(store.getId(), template.getId(), new Date(), 0, Status.NOT_DOWNLOADED, null, null, "jobid0000", null, template.getUri());
-            vmTemplateStore.setDataStoreRole(store.getRole());
-            vmTemplateStore = _vmTemplateStoreDao.persist(vmTemplateStore);
-        } else if ((vmTemplateStore.getJobId() != null) && (vmTemplateStore.getJobId().length() > 2)) {
-            downloadJobExists = true;
+        if (store.getRole().equals(DataStoreRole.Primary)) {
+            VMTemplateStoragePoolVO vmTemplatePool = templatePoolDao.findByPoolTemplate(store.getId(), template.getId());
+            if (vmTemplatePool == null) {
+                vmTemplatePool = new VMTemplateStoragePoolVO(store.getId(), template.getId(), new Date(), 0, Status.NOT_DOWNLOADED,
+                        null, null, "jobid0000", null, template.getSize());
+                vmTemplatePool = templatePoolDao.persist(vmTemplatePool);
+            }
+            else if ((vmTemplatePool.getJobId() != null) && (vmTemplatePool.getJobId().length() > 2)) {
+                downloadJobExists = true;
+            }
+            Long maxTemplateSizeInBytes = getMaxTemplateSizeInBytes();
+            if (vmTemplatePool != null) {
+                start();
+                DownloadCommand dcmd = new DownloadCommand((TemplateObjectTO)(template.getTO()), maxTemplateSizeInBytes);
+                dcmd.setProxy(getHttpProxy());
+                if (downloadJobExists) {
+                    dcmd = new DownloadProgressCommand(dcmd, vmTemplatePool.getJobId(), RequestType.GET_OR_RESTART);
+                }
+//                if (vmTemplatePool.isCopy()) {
+//                    dcmd.setCreds(TemplateConstants.DEFAULT_HTTP_AUTH_USER, _copyAuthPasswd);
+//                }
+                EndPoint ep = _epSelector.select(template);
+                if (ep == null) {
+                    String errMsg = "There is no secondary storage VM for downloading template to image store " + store.getName();
+                    s_logger.warn(errMsg);
+                    throw new CloudRuntimeException(errMsg);
+                }
+                DownloadListener dl = new DownloadListener(ep, store, template, _timer, this, dcmd, callback);
+                ComponentContext.inject(dl);  // initialize those auto-wired field in download listener.
+                if (downloadJobExists) {
+                    // due to handling existing download job issues, we still keep
+                    // downloadState in template_store_ref to avoid big change in
+                    // DownloadListener to use
+                    // new ObjectInDataStore.State transition. TODO: fix this later
+                    // to be able to remove downloadState from template_store_ref.
+                    s_logger.info("found existing download job");
+                    dl.setCurrState(vmTemplatePool.getDownloadState());
+                }
+
+                try {
+                    ep.sendMessageAsync(dcmd, new UploadListener.Callback(ep.getId(), dl));
+                } catch (Exception e) {
+                    s_logger.warn("Unable to start /resume download of template " + template.getId() + " to " + store.getName(), e);
+                    dl.setDisconnected();
+                    dl.scheduleStatusCheck(RequestType.GET_OR_RESTART);
+                }
+            }
         }
-
-        Long maxTemplateSizeInBytes = getMaxTemplateSizeInBytes();
-        if (vmTemplateStore != null) {
-            start();
-            VirtualMachineTemplate tmpl = _templateDao.findById(template.getId());
-            DownloadCommand dcmd = new DownloadCommand((TemplateObjectTO)(template.getTO()), maxTemplateSizeInBytes);
-            dcmd.setProxy(getHttpProxy());
-            if (downloadJobExists) {
-                dcmd = new DownloadProgressCommand(dcmd, vmTemplateStore.getJobId(), RequestType.GET_OR_RESTART);
-            }
-            if (vmTemplateStore.isCopy()) {
-                dcmd.setCreds(TemplateConstants.DEFAULT_HTTP_AUTH_USER, _copyAuthPasswd);
-            }
-            EndPoint ep = _epSelector.select(template);
-            if (ep == null) {
-                String errMsg = "There is no secondary storage VM for downloading template to image store " + store.getName();
-                s_logger.warn(errMsg);
-                throw new CloudRuntimeException(errMsg);
-            }
-            DownloadListener dl = new DownloadListener(ep, store, template, _timer, this, dcmd, callback);
-            ComponentContext.inject(dl);  // initialize those auto-wired field in download listener.
-            if (downloadJobExists) {
-                // due to handling existing download job issues, we still keep
-                // downloadState in template_store_ref to avoid big change in
-                // DownloadListener to use
-                // new ObjectInDataStore.State transition. TODO: fix this later
-                // to be able to remove downloadState from template_store_ref.
-                s_logger.info("found existing download job");
-                dl.setCurrState(vmTemplateStore.getDownloadState());
+        else if (store.getRole().equals(DataStoreRole.Image)) {
+            vmTemplateStore = _vmTemplateStoreDao.findByStoreTemplate(store.getId(), template.getId());
+            if (vmTemplateStore == null) {
+                vmTemplateStore =
+                        new TemplateDataStoreVO(store.getId(), template.getId(), new Date(), 0, Status.NOT_DOWNLOADED, null, null, "jobid0000", null, template.getUri());
+                vmTemplateStore.setDataStoreRole(store.getRole());
+                vmTemplateStore = _vmTemplateStoreDao.persist(vmTemplateStore);
+            } else if ((vmTemplateStore.getJobId() != null) && (vmTemplateStore.getJobId().length() > 2)) {
+                downloadJobExists = true;
             }
 
-            try {
-                ep.sendMessageAsync(dcmd, new UploadListener.Callback(ep.getId(), dl));
-            } catch (Exception e) {
-                s_logger.warn("Unable to start /resume download of template " + template.getId() + " to " + store.getName(), e);
-                dl.setDisconnected();
-                dl.scheduleStatusCheck(RequestType.GET_OR_RESTART);
+            Long maxTemplateSizeInBytes = getMaxTemplateSizeInBytes();
+            if (vmTemplateStore != null) {
+                start();
+                VirtualMachineTemplate tmpl = _templateDao.findById(template.getId());
+                DownloadCommand dcmd = new DownloadCommand((TemplateObjectTO)(template.getTO()), maxTemplateSizeInBytes);
+                dcmd.setProxy(getHttpProxy());
+                if (downloadJobExists) {
+                    dcmd = new DownloadProgressCommand(dcmd, vmTemplateStore.getJobId(), RequestType.GET_OR_RESTART);
+                }
+                if (vmTemplateStore.isCopy()) {
+                    dcmd.setCreds(TemplateConstants.DEFAULT_HTTP_AUTH_USER, _copyAuthPasswd);
+                }
+                EndPoint ep = _epSelector.select(template);
+                if (ep == null) {
+                    String errMsg = "There is no secondary storage VM for downloading template to image store " + store.getName();
+                    s_logger.warn(errMsg);
+                    throw new CloudRuntimeException(errMsg);
+                }
+                DownloadListener dl = new DownloadListener(ep, store, template, _timer, this, dcmd, callback);
+                ComponentContext.inject(dl);  // initialize those auto-wired field in download listener.
+                if (downloadJobExists) {
+                    // due to handling existing download job issues, we still keep
+                    // downloadState in template_store_ref to avoid big change in
+                    // DownloadListener to use
+                    // new ObjectInDataStore.State transition. TODO: fix this later
+                    // to be able to remove downloadState from template_store_ref.
+                    s_logger.info("found existing download job");
+                    dl.setCurrState(vmTemplateStore.getDownloadState());
+                }
+
+                try {
+                    ep.sendMessageAsync(dcmd, new UploadListener.Callback(ep.getId(), dl));
+                } catch (Exception e) {
+                    s_logger.warn("Unable to start /resume download of template " + template.getId() + " to " + store.getName(), e);
+                    dl.setDisconnected();
+                    dl.scheduleStatusCheck(RequestType.GET_OR_RESTART);
+                }
             }
         }
     }
@@ -183,7 +245,7 @@ public class DownloadMonitorImpl extends ManagerBase implements DownloadMonitor 
         if(template != null) {
             long templateId = template.getId();
             DataStore store = template.getDataStore();
-            if (isTemplateUpdateable(templateId, store.getId())) {
+            if (isTemplateUpdateable(templateId, store.getId(), store.getRole())) {
                 if (template.getUri() != null) {
                     initiateTemplateDownload(template, callback);
                 } else {

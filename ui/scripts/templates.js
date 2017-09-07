@@ -134,6 +134,11 @@
                                             required: true
                                         }
                                     },
+                                    bypass: {
+                                        label: 'Bypass template',
+                                        docID: 'helpRegisterTemplateBypass',
+                                        isBoolean: true
+                                    },
                                     zone: {
                                         label: 'label.zone',
                                         docID: 'helpRegisterTemplateZone',
@@ -587,7 +592,8 @@
                                     passwordEnabled: (args.data.isPasswordEnabled == "on"),
                                     isdynamicallyscalable: (args.data.isdynamicallyscalable == "on"),
                                     osTypeId: args.data.osTypeId,
-                                    hypervisor: args.data.hypervisor
+                                    hypervisor: args.data.hypervisor,
+                                    bypass: (args.data.bypass == "on")
                                 };
 
                                 if (args.$form.find('.form-item[rel=isPublic]').css("display") != "none") {
@@ -2079,6 +2085,11 @@
                                             required: true
                                         }
                                     },
+                                    bypass: {
+                                        label: 'Bypass ISO',
+                                        docID: 'helpRegisterISOBypass',
+                                        isBoolean: true
+                                    },
                                     zone: {
                                         label: 'label.zone',
                                         docID: 'helpRegisterISOZone',
@@ -2189,7 +2200,8 @@
                                     url: args.data.url,
                                     zoneid: args.data.zone,
                                     isextractable: (args.data.isExtractable == "on"),
-                                    bootable: (args.data.isBootable == "on")
+                                    bootable: (args.data.isBootable == "on"),
+                                    bypass: (args.data.bypass == "on")
                                 };
 
                                 if (args.$form.find('.form-item[rel=osTypeId]').css("display") != "none") {

@@ -450,6 +450,8 @@ public class EventTypes {
     public static final String EVENT_EXTERNAL_OVS_CONTROLLER_ADD = "PHYSICAL.OVSCONTROLLER.ADD";
     public static final String EVENT_EXTERNAL_OVS_CONTROLLER_DELETE = "PHYSICAL.OVSCONTROLLER.DELETE";
 
+    public static final String EVENT_DOWNLOAD_BYPASSED_TEMPLATE_TO_POOL = "DOWNLOAD.BYPASSED.TEMPLATE.TO.POOL";
+
     // external network mapping events
     public static final String EVENT_EXTERNAL_VSP_VSD_ADD = "PHYSICAL.NUAGE.VSD.ADD";
     public static final String EVENT_EXTERNAL_VSP_VSD_UPDATE = "PHYSICAL.NUAGE.VSD.UPDATE";

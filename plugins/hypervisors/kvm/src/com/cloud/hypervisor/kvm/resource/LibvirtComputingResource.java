@@ -1368,6 +1368,7 @@ public class LibvirtComputingResource extends ServerResourceBase implements Serv
         try {
             return wrapper.execute(cmd, this);
         } catch (final Exception e) {
+            s_logger.info("Error: " + e.getMessage());
             return Answer.createUnsupportedCommandAnswer(cmd);
         }
     }

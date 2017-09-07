@@ -40,7 +40,9 @@ import org.apache.cloudstack.engine.subsystem.api.storage.StorageAction;
 import org.apache.cloudstack.engine.subsystem.api.storage.TemplateDataFactory;
 import org.apache.cloudstack.engine.subsystem.api.storage.TemplateInfo;
 import org.apache.cloudstack.engine.subsystem.api.storage.VolumeInfo;
+import org.apache.cloudstack.framework.async.AsyncCallbackDispatcher;
 import org.apache.cloudstack.framework.async.AsyncCompletionCallback;
+import org.apache.cloudstack.framework.async.AsyncRpcContext;
 import org.apache.cloudstack.framework.config.dao.ConfigurationDao;
 import org.apache.cloudstack.storage.command.CommandResult;
 import org.apache.cloudstack.storage.command.CopyCmdAnswer;
@@ -55,6 +57,7 @@ import org.apache.cloudstack.storage.to.TemplateObjectTO;
 import org.apache.cloudstack.storage.volume.VolumeObject;
 
 import com.cloud.agent.api.Answer;
+import com.cloud.agent.api.storage.DownloadAnswer;
 import com.cloud.agent.api.storage.ResizeVolumeAnswer;
 import com.cloud.agent.api.storage.ResizeVolumeCommand;
 import com.cloud.agent.api.to.DataObjectType;
@@ -71,10 +74,12 @@ import com.cloud.storage.ResizeVolumePayload;
 import com.cloud.storage.Storage;
 import com.cloud.storage.StorageManager;
 import com.cloud.storage.StoragePool;
+import com.cloud.storage.VMTemplateStorageResourceAssoc;
 import com.cloud.storage.dao.DiskOfferingDao;
 import com.cloud.storage.dao.SnapshotDao;
 import com.cloud.storage.dao.VMTemplateDao;
 import com.cloud.storage.dao.VolumeDao;
+import com.cloud.storage.download.DownloadMonitor;
 import com.cloud.storage.snapshot.SnapshotManager;
 import com.cloud.template.TemplateManager;
 import com.cloud.utils.NumbersUtil;
@@ -115,6 +120,8 @@ public class CloudStackPrimaryDataStoreDriverImpl implements PrimaryDataStoreDri
     TemplateManager templateManager;
     @Inject
     TemplateDataFactory templateDataFactory;
+    @Inject
+    DownloadMonitor downloadMonitor;
 
     @Override
     public DataTO getTO(DataObject data) {
@@ -178,12 +185,62 @@ public class CloudStackPrimaryDataStoreDriverImpl implements PrimaryDataStoreDri
         return 0;
     }
 
+    protected class CreateContext<T> extends AsyncRpcContext<T> {
+        final DataObject data;
+
+        public CreateContext(AsyncCompletionCallback<T> callback, DataObject data) {
+            super(callback);
+            this.data = data;
+        }
+    }
+
+    protected Void createTemplateAsyncCallback(AsyncCallbackDispatcher<? extends CloudStackPrimaryDataStoreDriverImpl, DownloadAnswer> callback,
+            CreateContext<CreateCmdResult> context) {
+            if (s_logger.isDebugEnabled()) {
+                s_logger.debug("Performing download bypassed template async callback");
+            }
+            DownloadAnswer answer = callback.getResult();
+            DataObject obj = context.data;
+            DataStore store = obj.getDataStore();
+
+            AsyncCompletionCallback<CreateCmdResult> caller = context.getParentCallback();
+            s_logger.debug("answer - physical size=" + answer.getTemplatePhySicalSize());
+            if (answer.getDownloadStatus() == VMTemplateStorageResourceAssoc.Status.DOWNLOAD_ERROR ||
+                answer.getDownloadStatus() == VMTemplateStorageResourceAssoc.Status.ABANDONED || answer.getDownloadStatus() == VMTemplateStorageResourceAssoc.Status.UNKNOWN) {
+                CreateCmdResult result = new CreateCmdResult(null, null);
+                result.setSuccess(false);
+                result.setResult(answer.getErrorString());
+                caller.complete(result);
+                String msg = "Failed to register template: " + obj.getUuid() + " with error: " + answer.getErrorString();
+                s_logger.error(msg);
+            } else if (answer.getDownloadStatus() == VMTemplateStorageResourceAssoc.Status.DOWNLOADED) {
+                if (answer.getCheckSum() != null) {
+                }
+
+                CreateCmdResult result = new CreateCmdResult(null, null);
+                caller.complete(result);
+            }
+            return null;
+        }
+
     @Override
     public void createAsync(DataStore dataStore, DataObject data, AsyncCompletionCallback<CreateCmdResult> callback) {
         String errMsg = null;
         Answer answer = null;
         CreateCmdResult result = new CreateCmdResult(null, null);
-        if (data.getType() == DataObjectType.VOLUME) {
+        if (data.getType() == DataObjectType.TEMPLATE) {
+            TemplateInfo templ = (TemplateInfo) data;
+            if (templ.bypassSecondaryStorage()) {
+                s_logger.debug("Download template to storage");
+                CreateContext<CreateCmdResult> context = new CreateContext<CreateCmdResult>(callback, data);
+                AsyncCallbackDispatcher<CloudStackPrimaryDataStoreDriverImpl, DownloadAnswer> caller = AsyncCallbackDispatcher.create(this);
+                caller.setContext(context);
+                caller.setCallback(caller.getTarget().createTemplateAsyncCallback(null, null));
+                downloadMonitor.downloadTemplateToStorage(data, caller);
+                s_logger.debug("Ok, send download template cmd");
+            }
+        }
+        else if (data.getType() == DataObjectType.VOLUME) {
             try {
                 answer = createVolume((VolumeInfo) data);
                 if ((answer == null) || (!answer.getResult())) {

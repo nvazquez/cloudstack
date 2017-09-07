@@ -551,7 +551,7 @@ public class DownloadManagerImpl extends ManagerBase implements DownloadManager 
         String tmpDir = installPathPrefix;
 
         try {
-
+            s_logger.debug("Create tmp dir: " + tmpDir);
             if (!_storage.mkdirs(tmpDir)) {
                 s_logger.warn("Unable to create " + tmpDir);
                 return "Unable to create " + tmpDir;
@@ -693,6 +693,7 @@ public class DownloadManagerImpl extends ManagerBase implements DownloadManager 
 
     @Override
     public DownloadAnswer handleDownloadCommand(SecondaryStorageResource resource, DownloadCommand cmd) {
+        s_logger.debug("Handling download command, url = " + cmd.getUrl());
         ResourceType resourceType = cmd.getResourceType();
         if (cmd instanceof DownloadProgressCommand) {
             return handleDownloadProgressCmd(resource, (DownloadProgressCommand)cmd);

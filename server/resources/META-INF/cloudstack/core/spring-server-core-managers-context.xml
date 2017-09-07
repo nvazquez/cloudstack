@@ -273,4 +273,12 @@
     </bean>
     <bean id="certServiceImpl" class="org.apache.cloudstack.network.ssl.CertServiceImpl" />
     <bean id="imageStoreUploadMonitorImpl" class="com.cloud.storage.ImageStoreUploadMonitorImpl" />
+    
+    <bean id="BypassDownloadTemplateElement"
+        class="org.apache.cloudstack.bypass.download.manager.BypassDownloadTemplateElement">
+        <property name="name" value="BypassDownloadTemplateElement" />
+    </bean>
+
+    <bean id="DownloadBypassedTemplateService" class="org.apache.cloudstack.bypass.download.manager.BypassDownloadTemplateManagerImpl" />
+
 </beans>

@@ -307,4 +307,9 @@ public class TemplateEntityImpl implements TemplateEntity {
         // TODO Auto-generated method stub
         return null;
     }
+
+    @Override
+    public boolean bypassSecondaryStorage() {
+        return templateInfo.bypassSecondaryStorage();
+    }
 }

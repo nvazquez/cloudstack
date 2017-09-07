@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import javax.inject.Inject;
 
@@ -285,6 +286,7 @@ public class PrimaryDataStoreImpl implements PrimaryDataStore {
                             s_logger.debug("Not found (" + templateIdPoolIdString + ") in template_spool_ref, persisting it");
                         }
                         templateStoragePoolRef = new VMTemplateStoragePoolVO(getId(), obj.getId());
+                        templateStoragePoolRef.setInstallPath(UUID.randomUUID().toString());
                         templateStoragePoolRef = templatePoolDao.persist(templateStoragePoolRef);
                     }
                 } catch (Throwable t) {
@@ -435,4 +437,14 @@ public class PrimaryDataStoreImpl implements PrimaryDataStore {
         }
         return to;
     }
+
+//    @Override
+//    public void downloadTemplateBypassSecondaryStorage(DataObject template, DataStore store, AsyncCallFuture<VolumeApiResult> future) {
+//        DownloadBypassContext<Answer> context =
+//                new DownloadBypassContext<Answer>(null, volume, dataStore, template, future, templateOnPrimaryStoreObj, templatePoolRefId);
+//        AsyncCallbackDispatcher<VolumeServiceImpl, Answer> caller = AsyncCallbackDispatcher.create(this);
+//        caller.setCallback(caller.getTarget().downloadTemplateBypassSecondaryStorageCallback(null, null)).setContext(context);
+//        imageDataFactory.downloadTemplateToPrimaryStorage(template, store);
+//        return;
+//    }
 }

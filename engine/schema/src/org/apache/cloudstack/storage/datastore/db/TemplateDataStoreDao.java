@@ -83,4 +83,6 @@ public interface TemplateDataStoreDao extends GenericDao<TemplateDataStoreVO, Lo
     void expireDnldUrlsForZone(Long dcId);
 
     List<TemplateDataStoreVO> listByTemplateState(VirtualMachineTemplate.State... states);
+
+    boolean persistBypassDataStore(long templateId, long storeId);
 }

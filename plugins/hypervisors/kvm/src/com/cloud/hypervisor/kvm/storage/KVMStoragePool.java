@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.cloud.storage.Storage;
+
+import org.apache.cloudstack.bypass.download.manager.DownloadBypassedTemplateCommand.DownloadProtocol;
 import org.apache.cloudstack.utils.qemu.QemuImg.PhysicalDiskFormat;
 
 import com.cloud.storage.Storage.StoragePoolType;
@@ -70,4 +72,6 @@ public interface KVMStoragePool {
     PhysicalDiskFormat getDefaultFormat();
 
     public boolean createFolder(String path);
+
+    BypassTemplateInfo downloadTemplate(String url, DownloadProtocol protocol);
 }

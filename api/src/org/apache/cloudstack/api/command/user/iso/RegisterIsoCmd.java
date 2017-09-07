@@ -108,9 +108,16 @@ public class RegisterIsoCmd extends BaseCmd {
                description = "true if ISO contains XS/VMWare tools inorder to support dynamic scaling of VM CPU/memory")
     protected Boolean isDynamicallyScalable;
 
+    @Parameter(name = ApiConstants.BYPASS_TEMPLATE, type = CommandType.BOOLEAN, description = "true if ...")
+    private Boolean isBypass;
+
     /////////////////////////////////////////////////////
     /////////////////// Accessors ///////////////////////
     /////////////////////////////////////////////////////
+
+    public Boolean isBypass() {
+        return isBypass == null ? Boolean.FALSE : isBypass;
+    }
 
     public Boolean isBootable() {
         return bootable;

@@ -51,6 +51,7 @@ public class TemplateProfile {
     Map details;
     Boolean isDynamicallyScalable;
     TemplateType templateType;
+    Boolean bypass;
 
     public TemplateProfile(Long templateId, Long userId, String name, String displayText, Integer bits, Boolean passwordEnabled, Boolean requiresHvm, String url,
                            Boolean isPublic, Boolean featured, Boolean isExtractable, ImageFormat format, Long guestOsId, List<Long> zoneIdList, HypervisorType hypervisorType,
@@ -93,7 +94,7 @@ public class TemplateProfile {
             Boolean isPublic, Boolean featured, Boolean isExtractable, ImageFormat format, Long guestOsId, List<Long> zoneId,
 
             HypervisorType hypervisorType, String accountName, Long domainId, Long accountId, String chksum, Boolean bootable, String templateTag, Map details,
-            Boolean sshKeyEnabled, Long imageStoreId, Boolean isDynamicallyScalable, TemplateType templateType) {
+            Boolean sshKeyEnabled, Long imageStoreId, Boolean isDynamicallyScalable, TemplateType templateType, Boolean bypass) {
         this(templateId,
             userId,
             name,
@@ -119,6 +120,7 @@ public class TemplateProfile {
         this.templateTag = templateTag;
         this.isDynamicallyScalable = isDynamicallyScalable;
         this.templateType = templateType;
+        this.bypass = bypass;
     }
 
     public Long getTemplateId() {
@@ -207,6 +209,14 @@ public class TemplateProfile {
 
     public void setIsExtractable(Boolean is) {
         this.isExtractable = is;
+    }
+
+    public Boolean getBypass() {
+        return bypass;
+    }
+
+    public void setBypass(Boolean bypass) {
+        this.bypass = bypass;
     }
 
     public ImageFormat getFormat() {

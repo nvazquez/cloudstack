@@ -159,19 +159,30 @@ public class HypervisorTemplateAdapter extends TemplateAdapterBase {
             throw new CloudRuntimeException("Unable to persist the template " + profile.getTemplate());
         }
 
-        List<Long> zones = profile.getZoneIdList();
+        if (! profile.getBypass()) {
+            List<Long> zones = profile.getZoneIdList();
 
-        //zones is null when this template is to be registered to all zones
-        if (zones == null){
-            createTemplateWithinZone(null, profile, template);
-        }
-        else {
-            for (Long zId : zones) {
-                createTemplateWithinZone(zId, profile, template);
+            //zones is null when this template is to be registered to all zones
+            if (zones == null){
+                createTemplateWithinZone(null, profile, template);
+            }
+            else {
+                for (Long zId : zones) {
+                    createTemplateWithinZone(zId, profile, template);
+                }
             }
         }
+        else {
+            s_logger.debug("Bypass template flag, only persisting on template_store_ref");
+            persistBypassTemplate(profile, template);
+        }
+
         _resourceLimitMgr.incrementResourceCount(profile.getAccountId(), ResourceType.template);
         return template;
+    }
+
+    private void persistBypassTemplate(TemplateProfile profile, VMTemplateVO template) {
+        _tmpltDao.persistBypassTemplateRef(template);
     }
 
     private void createTemplateWithinZone(Long zId, TemplateProfile profile, VMTemplateVO template) {

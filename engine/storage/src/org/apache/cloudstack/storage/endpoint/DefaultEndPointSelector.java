@@ -49,6 +49,7 @@ import com.cloud.host.HostVO;
 import com.cloud.host.Status;
 import com.cloud.host.dao.HostDao;
 import com.cloud.hypervisor.Hypervisor;
+import com.cloud.hypervisor.Hypervisor.HypervisorType;
 import com.cloud.storage.DataStoreRole;
 import com.cloud.storage.ScopeType;
 import com.cloud.storage.Storage.TemplateType;
@@ -262,6 +263,14 @@ public class DefaultEndPointSelector implements EndPointSelector {
     @Override
     public EndPoint select(DataObject object) {
         DataStore store = object.getDataStore();
+        if (object instanceof TemplateInfo && ((TemplateInfo)object).bypassSecondaryStorage()) {
+            if (! object.getTO().getHypervisorType().equals(HypervisorType.KVM)) {
+                return selectSSVMToDownloadTemplate(store);
+            }
+            else {
+                return findEndPointInScope(store.getScope(), findOneHostOnPrimaryStorage, store.getId());
+            }
+        }
         EndPoint ep = select(store);
         if (ep != null) {
             return ep;
@@ -273,6 +282,26 @@ public class DefaultEndPointSelector implements EndPointSelector {
             }
         }
         return null;
+    }
+
+    private EndPoint selectSSVMToDownloadTemplate(DataStore store) {
+        s_logger.debug("Looking for SSVM endpoint to download bypassed template");
+        Long dcId = null;
+        Scope storeScope = store.getScope();
+        if (storeScope.getScopeType() == ScopeType.ZONE) {
+            dcId = storeScope.getScopeId();
+        }
+        // find ssvm that can be used to download data to store. For zone-wide
+        // image store, use SSVM for that zone. For region-wide store,
+        // we can arbitrarily pick one ssvm to do that task
+        List<HostVO> ssAHosts = listUpAndConnectingSecondaryStorageVmHost(dcId);
+        if (ssAHosts == null || ssAHosts.isEmpty()) {
+            return null;
+        }
+        Collections.shuffle(ssAHosts);
+        HostVO host = ssAHosts.get(0);
+        s_logger.debug("Returning endpoint: " + host.getId() + " - " + host.getPrivateIpAddress());
+        return RemoteHostEndPoint.getHypervisorHostEndPoint(host);
     }
 
     @Override

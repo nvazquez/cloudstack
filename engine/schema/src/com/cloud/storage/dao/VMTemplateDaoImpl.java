@@ -27,6 +27,7 @@ import java.util.Map;
 import javax.inject.Inject;
 import javax.naming.ConfigurationException;
 
+import org.apache.cloudstack.engine.subsystem.api.storage.ObjectInDataStoreStateMachine.State;
 import org.apache.cloudstack.storage.datastore.db.TemplateDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.TemplateDataStoreVO;
 import org.apache.log4j.Logger;
@@ -39,11 +40,13 @@ import com.cloud.host.HostVO;
 import com.cloud.host.dao.HostDao;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
 import com.cloud.server.ResourceTag.ResourceObjectType;
+import com.cloud.storage.DataStoreRole;
 import com.cloud.storage.Storage;
 import com.cloud.storage.Storage.ImageFormat;
 import com.cloud.storage.Storage.TemplateType;
 import com.cloud.storage.VMTemplateDetailVO;
 import com.cloud.storage.VMTemplateStorageResourceAssoc;
+import com.cloud.storage.VMTemplateStorageResourceAssoc.Status;
 import com.cloud.storage.VMTemplateVO;
 import com.cloud.storage.VMTemplateZoneVO;
 import com.cloud.tags.ResourceTagVO;
@@ -1085,5 +1088,18 @@ public class VMTemplateDaoImpl extends GenericDaoBase<VMTemplateVO, Long> implem
             }
         }
         return rows > 0;
+    }
+
+    @Override
+    public TemplateDataStoreVO persistBypassTemplateRef(VMTemplateVO template) {
+        TemplateDataStoreVO vo = new TemplateDataStoreVO();
+        vo.setTemplateId(template.getId());
+        vo.setDataStoreRole(DataStoreRole.Image);
+        vo.setState(State.Ready);
+        vo.setDownloadState(Status.DOWNLOADED);
+        vo.setDestroyed(false);
+        vo.setSize(0L);
+        vo.setBypass(true);
+        return _templateDataStoreDao.persist(vo);
     }
 }

@@ -20,6 +20,7 @@ package org.apache.cloudstack.engine.subsystem.api.storage;
 
 import java.util.List;
 
+import com.cloud.host.Host;
 import com.cloud.storage.DataStoreRole;
 
 public interface TemplateDataFactory {
@@ -36,4 +37,10 @@ public interface TemplateDataFactory {
     TemplateInfo getReadyTemplateOnCache(long templateId);
 
     List<TemplateInfo> listTemplateOnCache(long templateId);
+
+    TemplateInfo getReadyTemplateBypassSecondaryStorage(long templateId, DataStore store, Host host);
+
+    boolean isTemplateBypassSecondaryStorage(long templateId);
+
+//    void downloadTemplateToPrimaryStorage(DataObject template, DataStore store);
 }

@@ -22,7 +22,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 import org.libvirt.StoragePool;
-
+import org.apache.cloudstack.bypass.download.manager.DownloadBypassedTemplateCommand.DownloadProtocol;
 import org.apache.cloudstack.utils.qemu.QemuImg.PhysicalDiskFormat;
 
 import com.cloud.storage.Storage;
@@ -269,5 +269,10 @@ public class LibvirtStoragePool implements KVMStoragePool {
     @Override
     public boolean createFolder(String path) {
         return this._storageAdaptor.createFolder(this.uuid, path);
+    }
+
+    @Override
+    public BypassTemplateInfo downloadTemplate(String url, DownloadProtocol protocol) {
+        return _storageAdaptor.downloadTemplate(url, this.getUuid(), protocol);
     }
 }

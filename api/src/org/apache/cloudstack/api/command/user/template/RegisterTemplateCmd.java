@@ -143,6 +143,9 @@ public class RegisterTemplateCmd extends BaseCmd {
     @Parameter(name = ApiConstants.ROUTING, type = CommandType.BOOLEAN, description = "true if the template type is routing i.e., if template is used to deploy router")
     protected Boolean isRoutingType;
 
+    @Parameter(name = ApiConstants.BYPASS_TEMPLATE, type = CommandType.BOOLEAN, description = "true if ...")
+    private Boolean isBypass;
+
     @Parameter(name=ApiConstants.ZONE_ID_LIST,
             type=CommandType.LIST,
             collectionType = CommandType.UUID,
@@ -159,6 +162,10 @@ public class RegisterTemplateCmd extends BaseCmd {
     /////////////////////////////////////////////////////
     /////////////////// Accessors ///////////////////////
     /////////////////////////////////////////////////////
+
+    public Boolean isBypass() {
+        return isBypass == null ? Boolean.FALSE : isBypass;
+    }
 
     public Integer getBits() {
         return bits;

@@ -596,7 +596,7 @@ public class TemplateServiceImpl implements TemplateService {
         }
     }
 
-    protected Void createTemplateAsyncCallBack(AsyncCallbackDispatcher<TemplateServiceImpl, TemplateApiResult> callback,
+    public Void createTemplateAsyncCallBack(AsyncCallbackDispatcher<TemplateServiceImpl, TemplateApiResult> callback,
                                                TemplateOpContext<TemplateApiResult> context) {
         TemplateInfo template = context.template;
         TemplateApiResult result = callback.getResult();

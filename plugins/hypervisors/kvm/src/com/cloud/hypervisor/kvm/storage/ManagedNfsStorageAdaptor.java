@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.cloudstack.bypass.download.manager.DownloadBypassedTemplateCommand.DownloadProtocol;
 import org.apache.cloudstack.utils.qemu.QemuImg.PhysicalDiskFormat;
 import org.apache.log4j.Logger;
 import org.libvirt.Connect;
@@ -320,6 +321,11 @@ public class ManagedNfsStorageAdaptor implements StorageAdaptor {
 
     @Override
     public KVMPhysicalDisk createDiskFromTemplate(KVMPhysicalDisk template, String name, PhysicalDiskFormat format, ProvisioningType provisioningType, long size, KVMStoragePool destPool, int timeout) {
+        return null;
+    }
+
+    @Override
+    public BypassTemplateInfo downloadTemplate(String downloadUrl, String poolUuid, DownloadProtocol protocol) {
         return null;
     }
 }

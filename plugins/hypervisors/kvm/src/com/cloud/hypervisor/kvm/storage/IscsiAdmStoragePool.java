@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.cloud.storage.Storage;
+
+import org.apache.cloudstack.bypass.download.manager.DownloadBypassedTemplateCommand.DownloadProtocol;
 import org.apache.cloudstack.utils.qemu.QemuImg.PhysicalDiskFormat;
 
 import com.cloud.storage.Storage.StoragePoolType;
@@ -164,5 +166,10 @@ public class IscsiAdmStoragePool implements KVMStoragePool {
     @Override
     public String getLocalPath() {
         return _localPath;
+    }
+
+    @Override
+    public BypassTemplateInfo downloadTemplate(String url, DownloadProtocol protocol) {
+        return null;
     }
 }

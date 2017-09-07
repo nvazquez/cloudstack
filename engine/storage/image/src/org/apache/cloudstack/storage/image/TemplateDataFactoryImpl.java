@@ -23,17 +23,22 @@ import java.util.List;
 
 import javax.inject.Inject;
 
+import org.apache.cloudstack.bypass.download.manager.DownloadBypassedTemplateService;
 import org.apache.cloudstack.engine.subsystem.api.storage.DataObject;
 import org.apache.cloudstack.engine.subsystem.api.storage.DataStore;
 import org.apache.cloudstack.engine.subsystem.api.storage.DataStoreManager;
+import org.apache.cloudstack.engine.subsystem.api.storage.EndPointSelector;
 import org.apache.cloudstack.engine.subsystem.api.storage.TemplateDataFactory;
 import org.apache.cloudstack.engine.subsystem.api.storage.TemplateInfo;
+import org.apache.cloudstack.framework.config.dao.ConfigurationDao;
 import org.apache.cloudstack.storage.datastore.db.TemplateDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.TemplateDataStoreVO;
 import org.apache.cloudstack.storage.image.store.TemplateObject;
+import org.apache.cloudstack.storage.to.PrimaryDataStoreTO;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
 
+import com.cloud.host.Host;
 import com.cloud.storage.DataStoreRole;
 import com.cloud.storage.VMTemplateStoragePoolVO;
 import com.cloud.storage.VMTemplateVO;
@@ -51,6 +56,12 @@ public class TemplateDataFactoryImpl implements TemplateDataFactory {
     VMTemplatePoolDao templatePoolDao;
     @Inject
     TemplateDataStoreDao templateStoreDao;
+    @Inject
+    EndPointSelector endpointSelector;
+    @Inject
+    ConfigurationDao configDao;
+    @Inject
+    DownloadBypassedTemplateService bypassDownloadManager;
 
     @Override
     public TemplateInfo getTemplate(long templateId, DataStore store) {
@@ -151,6 +162,31 @@ public class TemplateDataFactoryImpl implements TemplateDataFactory {
             tmplObjs.add(tmplObj);
         }
         return tmplObjs;
+    }
+
+    @Override
+    public TemplateInfo getReadyTemplateBypassSecondaryStorage(long templateId, DataStore store, Host host) {
+        PrimaryDataStoreTO to = (PrimaryDataStoreTO) store.getTO();
+        try {
+            boolean success = bypassDownloadManager.downloadTemplateToStoragePool(templateId, store.getId(), host.getId());
+            if (success) {
+                s_logger.debug("Template successfully downloaded!");
+//                VMTemplateStoragePoolVO ref = templatePoolDao.findByPoolTemplate(store.getId(), templateId);
+                VMTemplateVO templ = imageDataDao.findById(templateId);
+                TemplateObject tmpl = TemplateObject.getTemplate(templ, store);
+                return tmpl;
+            }
+            s_logger.debug("Coulnt download template, failing");
+        } catch (Exception e) {
+            s_logger.debug("Error downloading template to PS due to: " + e.getMessage());
+        }
+        return null;
+    }
+
+    @Override
+    public boolean isTemplateBypassSecondaryStorage(long templateId) {
+        VMTemplateVO template = imageDataDao.findById(templateId);
+        return template.bypassSecondaryStorage();
     }
 
 }

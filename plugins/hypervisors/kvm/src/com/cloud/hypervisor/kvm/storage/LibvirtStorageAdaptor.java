@@ -43,6 +43,7 @@ import com.ceph.rbd.RbdImage;
 import com.ceph.rbd.jna.RbdImageInfo;
 import com.ceph.rbd.jna.RbdSnapInfo;
 
+import org.apache.cloudstack.bypass.download.manager.DownloadBypassedTemplateCommand.DownloadProtocol;
 import org.apache.cloudstack.utils.qemu.QemuImg;
 import org.apache.cloudstack.utils.qemu.QemuImg.PhysicalDiskFormat;
 import org.apache.cloudstack.utils.qemu.QemuImgException;
@@ -1384,5 +1385,36 @@ public class LibvirtStorageAdaptor implements StorageAdaptor {
 
     private void deleteDirVol(LibvirtStoragePool pool, StorageVol vol) throws LibvirtException {
         Script.runSimpleBashScript("rm -r --interactive=never " + vol.getPath());
+    }
+
+    @Override
+    public BypassTemplateInfo downloadTemplate(String downloadUrl, String poolUuid, DownloadProtocol protocol) {
+        s_logger.info("Attempting to download template from: " + downloadUrl + " on pool " + poolUuid);
+        if (protocol.equals(DownloadProtocol.HTTP)) {
+            String path = UUID.randomUUID().toString();
+            String[] urlParts = downloadUrl.split("/");
+            String fileName = urlParts[urlParts.length - 1];
+            if (createFolder(poolUuid, path)) {
+                String dir = _mountPoint + File.separator + poolUuid + File.separator + path;
+                String wgetCmd = "wget " + downloadUrl + " -P " + dir;
+                s_logger.info("Executing: " + wgetCmd);
+                Script.runSimpleBashScript(wgetCmd);
+                String routeToFile = dir + File.separator + fileName;
+                s_logger.info("Executing: bzip2 -d " + routeToFile);
+                Script.runSimpleBashScript("bzip2 -d " + routeToFile);
+                String extracted = fileName.substring(0, fileName.length() - 4); //Remove extension
+                String sizeResult = Script.runSimpleBashScript(
+                        "ls -als " + dir + File.separator + extracted + " | awk '{print $1}'");
+                long size = Long.valueOf(sizeResult);
+                String checksum = "CHECKSUM"; //TODO: Calculate checksum
+                s_logger.info("Downloaded and extracted template");
+                BypassTemplateInfo info = new BypassTemplateInfo(size, path, "DOWNLOADED", 100, checksum);
+                return info;
+            }
+            else {
+                s_logger.info("Error creating " + path + " folder");
+            }
+        }
+        return null;
     }
 }

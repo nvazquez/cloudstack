@@ -78,6 +78,7 @@ import com.cloud.agent.api.to.DataStoreTO;
 import com.cloud.agent.api.to.DataTO;
 import com.cloud.agent.api.to.DiskTO;
 import com.cloud.agent.api.to.NfsTO;
+import com.cloud.agent.api.to.UrlTO;
 import com.cloud.hypervisor.vmware.manager.VmwareHostService;
 import com.cloud.hypervisor.vmware.manager.VmwareManager;
 import com.cloud.hypervisor.vmware.manager.VmwareStorageMount;
@@ -261,145 +262,152 @@ public class VmwareStorageProcessor implements StorageProcessor {
         TemplateObjectTO template = (TemplateObjectTO)srcData;
         DataStoreTO srcStore = srcData.getDataStore();
 
-        if (!(srcStore instanceof NfsTO)) {
+        if (!(srcStore instanceof NfsTO) && !(srcStore instanceof UrlTO)) {
             return new CopyCmdAnswer("unsupported protocol");
         }
 
-        NfsTO nfsImageStore = (NfsTO)srcStore;
-        DataTO destData = cmd.getDestTO();
-        DataStoreTO destStore = destData.getDataStore();
-        DataStoreTO primaryStore = destStore;
+        if (srcStore instanceof UrlTO) {
+            UrlTO urlTO = (UrlTO) srcStore;
+            String downloadUrl = urlTO.getUrl();
+        }
+        else if (srcStore instanceof NfsTO) {
+            NfsTO nfsImageStore = (NfsTO)srcStore;
+            DataTO destData = cmd.getDestTO();
+            DataStoreTO destStore = destData.getDataStore();
+            DataStoreTO primaryStore = destStore;
 
-        String secondaryStorageUrl = nfsImageStore.getUrl();
+            String secondaryStorageUrl = nfsImageStore.getUrl();
 
-        assert (secondaryStorageUrl != null);
+            assert (secondaryStorageUrl != null);
 
-        boolean managed = false;
-        String storageHost = null;
-        int storagePort = Integer.MIN_VALUE;
-        String managedStoragePoolName = null;
-        String managedStoragePoolRootVolumeName = null;
-        String chapInitiatorUsername = null;
-        String chapInitiatorSecret = null;
-        String chapTargetUsername = null;
-        String chapTargetSecret = null;
+            boolean managed = false;
+            String storageHost = null;
+            int storagePort = Integer.MIN_VALUE;
+            String managedStoragePoolName = null;
+            String managedStoragePoolRootVolumeName = null;
+            String chapInitiatorUsername = null;
+            String chapInitiatorSecret = null;
+            String chapTargetUsername = null;
+            String chapTargetSecret = null;
 
-        if (destStore instanceof PrimaryDataStoreTO) {
-            PrimaryDataStoreTO destPrimaryDataStoreTo = (PrimaryDataStoreTO)destStore;
+            if (destStore instanceof PrimaryDataStoreTO) {
+                PrimaryDataStoreTO destPrimaryDataStoreTo = (PrimaryDataStoreTO)destStore;
 
-            Map<String, String> details = destPrimaryDataStoreTo.getDetails();
+                Map<String, String> details = destPrimaryDataStoreTo.getDetails();
 
-            if (details != null) {
-                managed = Boolean.parseBoolean(details.get(PrimaryDataStoreTO.MANAGED));
+                if (details != null) {
+                    managed = Boolean.parseBoolean(details.get(PrimaryDataStoreTO.MANAGED));
 
-                if (managed) {
-                    storageHost = details.get(PrimaryDataStoreTO.STORAGE_HOST);
+                    if (managed) {
+                        storageHost = details.get(PrimaryDataStoreTO.STORAGE_HOST);
 
-                    try {
-                        storagePort = Integer.parseInt(details.get(PrimaryDataStoreTO.STORAGE_PORT));
+                        try {
+                            storagePort = Integer.parseInt(details.get(PrimaryDataStoreTO.STORAGE_PORT));
+                        }
+                        catch (Exception ex) {
+                            storagePort = 3260;
+                        }
+
+                        managedStoragePoolName = details.get(PrimaryDataStoreTO.MANAGED_STORE_TARGET);
+                        managedStoragePoolRootVolumeName = details.get(PrimaryDataStoreTO.MANAGED_STORE_TARGET_ROOT_VOLUME);
+                        chapInitiatorUsername = details.get(PrimaryDataStoreTO.CHAP_INITIATOR_USERNAME);
+                        chapInitiatorSecret = details.get(PrimaryDataStoreTO.CHAP_INITIATOR_SECRET);
+                        chapTargetUsername = details.get(PrimaryDataStoreTO.CHAP_TARGET_USERNAME);
+                        chapTargetSecret = details.get(PrimaryDataStoreTO.CHAP_TARGET_SECRET);
                     }
-                    catch (Exception ex) {
-                        storagePort = 3260;
-                    }
-
-                    managedStoragePoolName = details.get(PrimaryDataStoreTO.MANAGED_STORE_TARGET);
-                    managedStoragePoolRootVolumeName = details.get(PrimaryDataStoreTO.MANAGED_STORE_TARGET_ROOT_VOLUME);
-                    chapInitiatorUsername = details.get(PrimaryDataStoreTO.CHAP_INITIATOR_USERNAME);
-                    chapInitiatorSecret = details.get(PrimaryDataStoreTO.CHAP_INITIATOR_SECRET);
-                    chapTargetUsername = details.get(PrimaryDataStoreTO.CHAP_TARGET_USERNAME);
-                    chapTargetSecret = details.get(PrimaryDataStoreTO.CHAP_TARGET_SECRET);
                 }
             }
-        }
 
-        String templateUrl = secondaryStorageUrl + "/" + srcData.getPath();
+            String templateUrl = secondaryStorageUrl + "/" + srcData.getPath();
 
-        Pair<String, String> templateInfo = VmwareStorageLayoutHelper.decodeTemplateRelativePathAndNameFromUrl(secondaryStorageUrl, templateUrl, template.getName());
+            Pair<String, String> templateInfo = VmwareStorageLayoutHelper.decodeTemplateRelativePathAndNameFromUrl(secondaryStorageUrl, templateUrl, template.getName());
 
-        VmwareContext context = hostService.getServiceContext(cmd);
-        if (context == null) {
-            return new CopyCmdAnswer("Failed to create a Vmware context, check the management server logs or the ssvm log for details");
-        }
+            VmwareContext context = hostService.getServiceContext(cmd);
+            if (context == null) {
+                return new CopyCmdAnswer("Failed to create a Vmware context, check the management server logs or the ssvm log for details");
+            }
 
-        try {
-            VmwareHypervisorHost hyperHost = hostService.getHyperHost(context, cmd);
-            String storageUuid = managed ? managedStoragePoolName : primaryStore.getUuid();
-            String templateUuidName = deriveTemplateUuidOnHost(hyperHost, storageUuid, templateInfo.second());
-            DatacenterMO dcMo = new DatacenterMO(context, hyperHost.getHyperHostDatacenter());
-            VirtualMachineMO templateMo = VmwareHelper.pickOneVmOnRunningHost(dcMo.findVmByNameAndLabel(templateUuidName), true);
-            DatastoreMO dsMo = null;
-            Pair<VirtualMachineMO, Long> vmInfo = null;
+            try {
+                VmwareHypervisorHost hyperHost = hostService.getHyperHost(context, cmd);
+                String storageUuid = managed ? managedStoragePoolName : primaryStore.getUuid();
+                String templateUuidName = deriveTemplateUuidOnHost(hyperHost, storageUuid, templateInfo.second());
+                DatacenterMO dcMo = new DatacenterMO(context, hyperHost.getHyperHostDatacenter());
+                VirtualMachineMO templateMo = VmwareHelper.pickOneVmOnRunningHost(dcMo.findVmByNameAndLabel(templateUuidName), true);
+                DatastoreMO dsMo = null;
+                Pair<VirtualMachineMO, Long> vmInfo = null;
 
-            if (templateMo == null) {
-                if (s_logger.isInfoEnabled()) {
-                    s_logger.info("Template " + templateInfo.second() + " is not setup yet. Set up template from secondary storage with uuid name: " + templateUuidName);
-                }
+                if (templateMo == null) {
+                    if (s_logger.isInfoEnabled()) {
+                        s_logger.info("Template " + templateInfo.second() + " is not setup yet. Set up template from secondary storage with uuid name: " + templateUuidName);
+                    }
 
-                final ManagedObjectReference morDs;
+                    final ManagedObjectReference morDs;
 
-                if (managed) {
-                    morDs = prepareManagedDatastore(context, hyperHost, null, managedStoragePoolName, storageHost, storagePort,
+                    if (managed) {
+                        morDs = prepareManagedDatastore(context, hyperHost, null, managedStoragePoolName, storageHost, storagePort,
                                 chapInitiatorUsername, chapInitiatorSecret, chapTargetUsername, chapTargetSecret);
-                }
-                else {
-                    morDs = HypervisorHostHelper.findDatastoreWithBackwardsCompatibility(hyperHost, storageUuid);
+                    }
+                    else {
+                        morDs = HypervisorHostHelper.findDatastoreWithBackwardsCompatibility(hyperHost, storageUuid);
+                    }
+
+                    assert (morDs != null);
+
+                    dsMo = new DatastoreMO(context, morDs);
+
+                    if (managed) {
+                        vmInfo = copyTemplateFromSecondaryToPrimary(hyperHost, dsMo, secondaryStorageUrl, templateInfo.first(), templateInfo.second(),
+                                managedStoragePoolRootVolumeName, false, _nfsVersion);
+
+                        VirtualMachineMO vmMo = vmInfo.first();
+                        vmMo.unregisterVm();
+
+                        String[] vmwareLayoutFilePair = VmwareStorageLayoutHelper.getVmdkFilePairDatastorePath(dsMo, managedStoragePoolRootVolumeName,
+                                managedStoragePoolRootVolumeName, VmwareStorageLayoutType.VMWARE, false);
+                        String[] legacyCloudStackLayoutFilePair = VmwareStorageLayoutHelper.getVmdkFilePairDatastorePath(dsMo, null,
+                                managedStoragePoolRootVolumeName, VmwareStorageLayoutType.CLOUDSTACK_LEGACY, false);
+
+                        dsMo.moveDatastoreFile(vmwareLayoutFilePair[0], dcMo.getMor(), dsMo.getMor(), legacyCloudStackLayoutFilePair[0], dcMo.getMor(), true);
+                        dsMo.moveDatastoreFile(vmwareLayoutFilePair[1], dcMo.getMor(), dsMo.getMor(), legacyCloudStackLayoutFilePair[1], dcMo.getMor(), true);
+
+                        String folderToDelete = dsMo.getDatastorePath(managedStoragePoolRootVolumeName, true);
+                        dsMo.deleteFolder(folderToDelete, dcMo.getMor());
+                    }
+                    else {
+                        vmInfo = copyTemplateFromSecondaryToPrimary(hyperHost, dsMo, secondaryStorageUrl, templateInfo.first(), templateInfo.second(),
+                                templateUuidName, true, _nfsVersion);
+                    }
+                } else {
+                    s_logger.info("Template " + templateInfo.second() + " has already been setup, skip the template setup process in primary storage");
                 }
 
-                assert (morDs != null);
-
-                dsMo = new DatastoreMO(context, morDs);
+                TemplateObjectTO newTemplate = new TemplateObjectTO();
 
                 if (managed) {
-                    vmInfo = copyTemplateFromSecondaryToPrimary(hyperHost, dsMo, secondaryStorageUrl, templateInfo.first(), templateInfo.second(),
-                            managedStoragePoolRootVolumeName, false, _nfsVersion);
-
-                    VirtualMachineMO vmMo = vmInfo.first();
-                    vmMo.unregisterVm();
-
-                    String[] vmwareLayoutFilePair = VmwareStorageLayoutHelper.getVmdkFilePairDatastorePath(dsMo, managedStoragePoolRootVolumeName,
-                            managedStoragePoolRootVolumeName, VmwareStorageLayoutType.VMWARE, false);
-                    String[] legacyCloudStackLayoutFilePair = VmwareStorageLayoutHelper.getVmdkFilePairDatastorePath(dsMo, null,
-                            managedStoragePoolRootVolumeName, VmwareStorageLayoutType.CLOUDSTACK_LEGACY, false);
-
-                    dsMo.moveDatastoreFile(vmwareLayoutFilePair[0], dcMo.getMor(), dsMo.getMor(), legacyCloudStackLayoutFilePair[0], dcMo.getMor(), true);
-                    dsMo.moveDatastoreFile(vmwareLayoutFilePair[1], dcMo.getMor(), dsMo.getMor(), legacyCloudStackLayoutFilePair[1], dcMo.getMor(), true);
-
-                    String folderToDelete = dsMo.getDatastorePath(managedStoragePoolRootVolumeName, true);
-                    dsMo.deleteFolder(folderToDelete, dcMo.getMor());
+                    if(dsMo != null) {
+                        String path = dsMo.getDatastorePath(managedStoragePoolRootVolumeName + ".vmdk");
+                        newTemplate.setPath(path);
+                    }
                 }
                 else {
-                    vmInfo = copyTemplateFromSecondaryToPrimary(hyperHost, dsMo, secondaryStorageUrl, templateInfo.first(), templateInfo.second(),
-                            templateUuidName, true, _nfsVersion);
+                    newTemplate.setPath(templateUuidName);
                 }
-            } else {
-                s_logger.info("Template " + templateInfo.second() + " has already been setup, skip the template setup process in primary storage");
-            }
+                newTemplate.setSize((vmInfo != null)? vmInfo.second() : new Long(0));
 
-            TemplateObjectTO newTemplate = new TemplateObjectTO();
-
-            if (managed) {
-                if(dsMo != null) {
-                    String path = dsMo.getDatastorePath(managedStoragePoolRootVolumeName + ".vmdk");
-                    newTemplate.setPath(path);
+                return new CopyCmdAnswer(newTemplate);
+            } catch (Throwable e) {
+                if (e instanceof RemoteException) {
+                    hostService.invalidateServiceContext(context);
                 }
+
+                String msg = "Unable to copy template to primary storage due to exception:" + VmwareHelper.getExceptionMessage(e);
+
+                s_logger.error(msg, e);
+
+                return new CopyCmdAnswer(msg);
             }
-            else {
-                newTemplate.setPath(templateUuidName);
-            }
-            newTemplate.setSize((vmInfo != null)? vmInfo.second() : new Long(0));
-
-            return new CopyCmdAnswer(newTemplate);
-        } catch (Throwable e) {
-            if (e instanceof RemoteException) {
-                hostService.invalidateServiceContext(context);
-            }
-
-            String msg = "Unable to copy template to primary storage due to exception:" + VmwareHelper.getExceptionMessage(e);
-
-            s_logger.error(msg, e);
-
-            return new CopyCmdAnswer(msg);
         }
+        return null;
     }
 
     private boolean createVMLinkedClone(VirtualMachineMO vmTemplate, DatacenterMO dcMo, DatastoreMO dsMo, String vmdkName, ManagedObjectReference morDatastore,

@@ -19,6 +19,8 @@ package com.cloud.storage.dao;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.cloudstack.storage.datastore.db.TemplateDataStoreVO;
+
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
 import com.cloud.storage.VMTemplateVO;
 import com.cloud.template.VirtualMachineTemplate;
@@ -81,4 +83,6 @@ public interface VMTemplateDao extends GenericDao<VMTemplateVO, Long>, StateDao<
     void loadDetails(VMTemplateVO tmpl);
 
     void saveDetails(VMTemplateVO tmpl);
+
+    TemplateDataStoreVO persistBypassTemplateRef(VMTemplateVO template);
 }

@@ -22,7 +22,7 @@ import java.util.Map;
 
 import com.cloud.storage.Storage;
 import org.apache.log4j.Logger;
-
+import org.apache.cloudstack.bypass.download.manager.DownloadBypassedTemplateCommand.DownloadProtocol;
 import org.apache.cloudstack.utils.qemu.QemuImg.PhysicalDiskFormat;
 
 import com.cloud.agent.api.to.DiskTO;
@@ -373,5 +373,10 @@ public class IscsiAdmStorageAdaptor implements StorageAdaptor {
     @Override
     public boolean createFolder(String uuid, String path) {
         throw new UnsupportedOperationException("A folder cannot be created in this configuration.");
+    }
+
+    @Override
+    public BypassTemplateInfo downloadTemplate(String downloadUrl, String poolUuid, DownloadProtocol protocol) {
+        return null;
     }
 }

@@ -46,6 +46,7 @@ import org.apache.cloudstack.engine.subsystem.api.storage.PrimaryDataStoreDriver
 import org.apache.cloudstack.engine.subsystem.api.storage.Scope;
 import org.apache.cloudstack.engine.subsystem.api.storage.SnapshotInfo;
 import org.apache.cloudstack.engine.subsystem.api.storage.TemplateInfo;
+import org.apache.cloudstack.engine.subsystem.api.storage.TemplateService;
 import org.apache.cloudstack.engine.subsystem.api.storage.VolumeDataFactory;
 import org.apache.cloudstack.engine.subsystem.api.storage.VolumeInfo;
 import org.apache.cloudstack.engine.subsystem.api.storage.VolumeService;
@@ -119,7 +120,6 @@ import com.cloud.utils.db.GlobalLock;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.storage.dao.VolumeDetailsDao;
 
-
 @Component
 public class VolumeServiceImpl implements VolumeService {
     private static final Logger s_logger = Logger.getLogger(VolumeServiceImpl.class);
@@ -163,6 +163,8 @@ public class VolumeServiceImpl implements VolumeService {
     private ClusterDao clusterDao;
     @Inject
     private VolumeDetailsDao _volumeDetailsDao;
+    @Inject
+    private TemplateService templateService;
 
     private final static String SNAPSHOT_ID = "SNAPSHOT_ID";
 
@@ -517,27 +519,10 @@ public class VolumeServiceImpl implements VolumeService {
 
     }
 
-    private TemplateInfo waitForTemplateDownloaded(PrimaryDataStore store, TemplateInfo template) {
-        int storagePoolMaxWaitSeconds = NumbersUtil.parseInt(configDao.getValue(Config.StoragePoolMaxWaitSeconds.key()), 3600);
-        int sleepTime = 120;
-        int tries = storagePoolMaxWaitSeconds / sleepTime;
-        while (tries > 0) {
-            TemplateInfo tmpl = store.getTemplate(template.getId());
-            if (tmpl != null) {
-                return tmpl;
-            }
-            try {
-                Thread.sleep(sleepTime * 1000);
-            } catch (InterruptedException e) {
-                s_logger.debug("waiting for template download been interrupted: " + e.toString());
-            }
-            tries--;
-        }
-        return null;
-    }
-
     @DB
     protected void createBaseImageAsync(VolumeInfo volume, PrimaryDataStore dataStore, TemplateInfo template, AsyncCallFuture<VolumeApiResult> future) {
+        boolean bypass = template.bypassSecondaryStorage();
+        s_logger.debug("Template was not in PS, copying it, in case of bypass we must download - bypass: " + bypass);
         DataObject templateOnPrimaryStoreObj = dataStore.create(template);
 
         VMTemplateStoragePoolVO templatePoolRef = _tmpltPoolDao.findByPoolTemplate(dataStore.getId(), template.getId());
@@ -550,54 +535,60 @@ public class VolumeServiceImpl implements VolumeService {
             }
         }
         long templatePoolRefId = templatePoolRef.getId();
-        CreateBaseImageContext<CreateCmdResult> context =
-                new CreateBaseImageContext<CreateCmdResult>(null, volume, dataStore, template, future, templateOnPrimaryStoreObj, templatePoolRefId);
-        AsyncCallbackDispatcher<VolumeServiceImpl, CopyCommandResult> caller = AsyncCallbackDispatcher.create(this);
-        caller.setCallback(caller.getTarget().copyBaseImageCallback(null, null)).setContext(context);
 
-        int storagePoolMaxWaitSeconds = NumbersUtil.parseInt(configDao.getValue(Config.StoragePoolMaxWaitSeconds.key()), 3600);
-        if (s_logger.isDebugEnabled()) {
-            s_logger.debug("Acquire lock on VMTemplateStoragePool " + templatePoolRefId + " with timeout " + storagePoolMaxWaitSeconds + " seconds");
+        if (bypass) {
+            s_logger.debug("Bypass template flag is on, download template on PS, calling template async");
         }
-        templatePoolRef = _tmpltPoolDao.acquireInLockTable(templatePoolRefId, storagePoolMaxWaitSeconds);
+        else {
+            CreateBaseImageContext<CreateCmdResult> context =
+                    new CreateBaseImageContext<CreateCmdResult>(null, volume, dataStore, template, future, templateOnPrimaryStoreObj, templatePoolRefId);
+            AsyncCallbackDispatcher<VolumeServiceImpl, CopyCommandResult> caller = AsyncCallbackDispatcher.create(this);
+            caller.setCallback(caller.getTarget().copyBaseImageCallback(null, null)).setContext(context);
 
-        if (templatePoolRef == null) {
+            int storagePoolMaxWaitSeconds = NumbersUtil.parseInt(configDao.getValue(Config.StoragePoolMaxWaitSeconds.key()), 3600);
             if (s_logger.isDebugEnabled()) {
-                s_logger.info("Unable to acquire lock on VMTemplateStoragePool " + templatePoolRefId);
+                s_logger.debug("Acquire lock on VMTemplateStoragePool " + templatePoolRefId + " with timeout " + storagePoolMaxWaitSeconds + " seconds");
             }
-            templatePoolRef = _tmpltPoolDao.findByPoolTemplate(dataStore.getId(), template.getId());
-            if (templatePoolRef != null && templatePoolRef.getState() == ObjectInDataStoreStateMachine.State.Ready) {
-                s_logger.info("Unable to acquire lock on VMTemplateStoragePool " + templatePoolRefId + ", But Template " + template.getUniqueName() +
-                        " is already copied to primary storage, skip copying");
-                createVolumeFromBaseImageAsync(volume, templateOnPrimaryStoreObj, dataStore, future);
-                return;
-            }
-            throw new CloudRuntimeException("Unable to acquire lock on VMTemplateStoragePool: " + templatePoolRefId);
-        }
+            templatePoolRef = _tmpltPoolDao.acquireInLockTable(templatePoolRefId, storagePoolMaxWaitSeconds);
 
-        if (s_logger.isDebugEnabled()) {
-            s_logger.info("lock is acquired for VMTemplateStoragePool " + templatePoolRefId);
-        }
-        try {
-            if (templatePoolRef.getState() == ObjectInDataStoreStateMachine.State.Ready) {
-                s_logger.info("Template " + template.getUniqueName() + " is already copied to primary storage, skip copying");
-                createVolumeFromBaseImageAsync(volume, templateOnPrimaryStoreObj, dataStore, future);
-                return;
+            if (templatePoolRef == null) {
+                if (s_logger.isDebugEnabled()) {
+                    s_logger.info("Unable to acquire lock on VMTemplateStoragePool " + templatePoolRefId);
+                }
+                templatePoolRef = _tmpltPoolDao.findByPoolTemplate(dataStore.getId(), template.getId());
+                if (templatePoolRef != null && templatePoolRef.getState() == ObjectInDataStoreStateMachine.State.Ready) {
+                    s_logger.info("Unable to acquire lock on VMTemplateStoragePool " + templatePoolRefId + ", But Template " + template.getUniqueName() +
+                            " is already copied to primary storage, skip copying");
+                    createVolumeFromBaseImageAsync(volume, templateOnPrimaryStoreObj, dataStore, future);
+                    return;
+                }
+                throw new CloudRuntimeException("Unable to acquire lock on VMTemplateStoragePool: " + templatePoolRefId);
             }
-            templateOnPrimaryStoreObj.processEvent(Event.CreateOnlyRequested);
-            motionSrv.copyAsync(template, templateOnPrimaryStoreObj, caller);
-        } catch (Throwable e) {
-            s_logger.debug("failed to create template on storage", e);
-            templateOnPrimaryStoreObj.processEvent(Event.OperationFailed);
-            dataStore.create(template);  // make sure that template_spool_ref entry is still present so that the second thread can acquire the lock
-            VolumeApiResult result = new VolumeApiResult(volume);
-            result.setResult(e.toString());
-            future.complete(result);
-        } finally {
+
             if (s_logger.isDebugEnabled()) {
-                s_logger.info("releasing lock for VMTemplateStoragePool " + templatePoolRefId);
+                s_logger.info("lock is acquired for VMTemplateStoragePool " + templatePoolRefId);
             }
-            _tmpltPoolDao.releaseFromLockTable(templatePoolRefId);
+            try {
+                if (templatePoolRef.getState() == ObjectInDataStoreStateMachine.State.Ready) {
+                    s_logger.info("Template " + template.getUniqueName() + " is already copied to primary storage, skip copying");
+                    createVolumeFromBaseImageAsync(volume, templateOnPrimaryStoreObj, dataStore, future);
+                    return;
+                }
+                templateOnPrimaryStoreObj.processEvent(Event.CreateOnlyRequested);
+                motionSrv.copyAsync(template, templateOnPrimaryStoreObj, caller);
+            } catch (Throwable e) {
+                s_logger.debug("failed to create template on storage", e);
+                templateOnPrimaryStoreObj.processEvent(Event.OperationFailed);
+                dataStore.create(template);  // make sure that template_spool_ref entry is still present so that the second thread can acquire the lock
+                VolumeApiResult result = new VolumeApiResult(volume);
+                result.setResult(e.toString());
+                future.complete(result);
+            } finally {
+                if (s_logger.isDebugEnabled()) {
+                    s_logger.info("releasing lock for VMTemplateStoragePool " + templatePoolRefId);
+                }
+                _tmpltPoolDao.releaseFromLockTable(templatePoolRefId);
+            }
         }
         return;
     }

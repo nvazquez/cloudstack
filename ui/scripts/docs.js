@@ -24,6 +24,14 @@ cloudStack.docs = {
         externalLink: ''
 
     },
+    helpRegisterISOBypass: {
+        desc: 'Indicates whether bypass secondary storage or not',
+        externalLink: ''
+    },
+    helpRegisterTemplateBypass: {
+        desc: 'Indicates whether bypass secondary storage or not',
+        externalLink: ''
+    },
 
     helpAccountForDedication: {
 

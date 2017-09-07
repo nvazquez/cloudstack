@@ -125,6 +125,9 @@ public class TemplateDataStoreVO implements StateObject<ObjectInDataStoreStateMa
     @Column(name = "ref_cnt")
     Long refCnt = 0L;
 
+    @Column(name = "bypass")
+    boolean bypass = false;
+
     public TemplateDataStoreVO(Long hostId, long templateId) {
         super();
         dataStoreId = hostId;
@@ -400,6 +403,14 @@ public class TemplateDataStoreVO implements StateObject<ObjectInDataStoreStateMa
 
     public void setExtractUrlCreated(Date extractUrlCreated) {
         this.extractUrlCreated = extractUrlCreated;
+    }
+
+    public boolean isBypass() {
+        return bypass;
+    }
+
+    public void setBypass(boolean bypass) {
+        this.bypass = bypass;
     }
 
 }

@@ -499,4 +499,9 @@ public class TemplateObject implements TemplateInfo {
         // TODO Auto-generated method stub
         return null;
     }
+
+    @Override
+    public boolean bypassSecondaryStorage() {
+        return this.imageVO.bypassSecondaryStorage();
+    }
 }

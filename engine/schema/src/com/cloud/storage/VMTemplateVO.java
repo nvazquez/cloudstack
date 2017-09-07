@@ -133,6 +133,9 @@ public class VMTemplateVO implements VirtualMachineTemplate {
     @Column(name = "size")
     private Long size;
 
+    @Column(name = "bypass")
+    private boolean bypass;
+
     @Column(name = "update_count", updatable = true)
     protected long updatedCount;
 
@@ -188,7 +191,7 @@ public class VMTemplateVO implements VirtualMachineTemplate {
 
     public VMTemplateVO(long id, String name, ImageFormat format, boolean isPublic, boolean featured, boolean isExtractable, TemplateType type, String url,
             boolean requiresHvm, int bits, long accountId, String cksum, String displayText, boolean enablePassword, long guestOSId, boolean bootable,
-            HypervisorType hyperType, String templateTag, Map<String, String> details, boolean sshKeyEnabled, boolean isDynamicallyScalable) {
+            HypervisorType hyperType, String templateTag, Map<String, String> details, boolean sshKeyEnabled, boolean isDynamicallyScalable, boolean bypass) {
         this(id,
             name,
             format,
@@ -212,6 +215,7 @@ public class VMTemplateVO implements VirtualMachineTemplate {
         enableSshKey = sshKeyEnabled;
         dynamicallyScalable = isDynamicallyScalable;
         state = State.Active;
+        this.bypass = bypass;
     }
 
     public static VMTemplateVO createPreHostIso(Long id, String uniqueName, String name, ImageFormat format, boolean isPublic, boolean featured, TemplateType type,
@@ -356,6 +360,10 @@ public class VMTemplateVO implements VirtualMachineTemplate {
     @Override
     public boolean isPublicTemplate() {
         return publicTemplate;
+    }
+
+    public boolean isBypass() {
+        return bypass;
     }
 
     public void setPublicTemplate(boolean publicTemplate) {
@@ -599,6 +607,11 @@ public class VMTemplateVO implements VirtualMachineTemplate {
     @Override
     public Date getUpdated() {
         return updated;
+    }
+
+    @Override
+    public boolean bypassSecondaryStorage() {
+        return bypass;
     }
 
     public void setUpdated(Date updated) {
