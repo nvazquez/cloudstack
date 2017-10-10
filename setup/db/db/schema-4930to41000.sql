@@ -255,3 +255,10 @@ CREATE TABLE `cloud`.`firewall_rules_dcidrs`(
   KEY `fk_firewall_dcidrs_firewall_rules` (`firewall_rule_id`),
   CONSTRAINT `fk_firewall_dcidrs_firewall_rules` FOREIGN KEY (`firewall_rule_id`) REFERENCES `firewall_rules` (`id`) ON DELETE CASCADE
 )ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- FR16: Bypass Secondary Storage
+ALTER TABLE `cloud`.`vm_template`
+ADD COLUMN `bypass` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Bypass Secondary Storage';
+
+ALTER TABLE `cloud`.`template_store_ref`
+ADD COLUMN `bypass` TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'Bypass Secondary Storage';
