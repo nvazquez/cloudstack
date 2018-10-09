@@ -1719,9 +1719,11 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
                 // create a volume on the destination storage
                 destDataStore.getDriver().createAsync(destDataStore, destVolumeInfo, null);
 
+                String volumeIdentifier = destStoragePool.isManaged() ? destVolumeInfo.get_iScsiName() : destVolumeInfo.getUuid();
+
                 destVolume = _volumeDao.findById(destVolume.getId());
 
-                destVolume.setPath(destVolume.get_iScsiName());
+                destVolume.setPath(volumeIdentifier);
 
                 _volumeDao.update(destVolume.getId(), destVolume);
 
@@ -1731,7 +1733,7 @@ public class StorageSystemDataMotionStrategy implements DataMotionStrategy {
 
                 _volumeService.grantAccess(destVolumeInfo, destHost, destDataStore);
 
-                String connectedPath = connectHostToVolume(destHost, destVolumeInfo.getPoolId(), destVolumeInfo.get_iScsiName());
+                String connectedPath = connectHostToVolume(destHost, destVolumeInfo.getPoolId(), volumeIdentifier);
 
                 MigrateCommand.MigrateDiskInfo migrateDiskInfo = new MigrateCommand.MigrateDiskInfo(srcVolumeInfo.getPath(),
                         MigrateCommand.MigrateDiskInfo.DiskType.BLOCK,
