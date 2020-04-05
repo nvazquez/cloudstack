@@ -435,12 +435,6 @@ public class VmwareContext {
     public long downloadVmdkFile(String urlString, String localFileName, long totalBytesDownloaded, ActionDelegate<Long> progressUpdater) throws Exception {
         HttpURLConnection conn = getRawHTTPConnection(urlString);
 
-        String cookie = _vimClient.getServiceCookie();
-        if (cookie == null) {
-            s_logger.error("No cookie is found in vwware web service request context!");
-            throw new Exception("No cookie is found in vmware web service request context!");
-        }
-        conn.addRequestProperty("Cookie", cookie);
         conn.setDoInput(true);
         conn.setDoOutput(true);
         conn.setAllowUserInteraction(true);
@@ -611,18 +605,12 @@ public class VmwareContext {
     }
 
     public HttpURLConnection getHTTPConnection(String urlString, String httpMethod) throws Exception {
-        String cookie = _vimClient.getServiceCookie();
-        if (cookie == null) {
-            s_logger.error("No cookie is found in vmware web service request context!");
-            throw new Exception("No cookie is found in vmware web service request context!");
-        }
         URL url = new URL(urlString);
         HttpURLConnection conn = (HttpURLConnection)url.openConnection();
 
         conn.setDoInput(true);
         conn.setDoOutput(true);
         conn.setAllowUserInteraction(true);
-        conn.addRequestProperty("Cookie", cookie);
         conn.setRequestMethod(httpMethod);
         connectWithRetry(conn);
         return conn;

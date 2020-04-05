@@ -21,20 +21,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.StringTokenizer;
 
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLSession;
 import javax.xml.ws.BindingProvider;
 import javax.xml.ws.WebServiceException;
-import javax.xml.ws.handler.MessageContext;
 
 import com.vmware.vapi.bindings.StubConfiguration;
 import com.vmware.vapi.protocol.HttpConfiguration;
 import com.vmware.vcenter.VM;
-import org.apache.cloudstack.utils.security.SSLUtils;
-import org.apache.cloudstack.utils.security.SecureSSLSocketFactory;
 import org.apache.log4j.Logger;
 import org.w3c.dom.Element;
 
@@ -76,55 +69,8 @@ import vmware.samples.common.authentication.VimAuthenticationHelper;
 public class VmwareClient {
     private static final Logger s_logger = Logger.getLogger(VmwareClient.class);
 
-    private static class TrustAllTrustManager implements javax.net.ssl.TrustManager, javax.net.ssl.X509TrustManager {
-
-        @Override
-        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-            return null;
-        }
-
-        @Override
-        public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) throws java.security.cert.CertificateException {
-            return;
-        }
-
-        @Override
-        public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) throws java.security.cert.CertificateException {
-            return;
-        }
-    }
-
-    static {
-        try {
-            trustAllHttpsCertificates();
-            HostnameVerifier hv = new HostnameVerifier() {
-                @Override
-                public boolean verify(String urlHostName, SSLSession session) {
-                    return true;
-                }
-            };
-            HttpsURLConnection.setDefaultHostnameVerifier(hv);
-        } catch (Exception e) {
-            s_logger.info("[ignored]"
-                    + "failed to trust all certificates blindly: ", e);
-        }
-    }
-
-    private static void trustAllHttpsCertificates() throws Exception {
-        // Create a trust manager that does not validate certificate chains:
-        javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[1];
-        javax.net.ssl.TrustManager tm = new TrustAllTrustManager();
-        trustAllCerts[0] = tm;
-        javax.net.ssl.SSLContext sc = SSLUtils.getSSLContext();
-        javax.net.ssl.SSLSessionContext sslsc = sc.getServerSessionContext();
-        sslsc.setSessionTimeout(0);
-        sc.init(null, trustAllCerts, null);
-        javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(new SecureSSLSocketFactory(sc));
-    }
-
     private final ManagedObjectReference svcInstRef = new ManagedObjectReference();
     private VimPortType vimPort;
-    private String serviceCookie;
     private final static String SVC_INST_NAME = "ServiceInstance";
     private int vCenterSessionTimeout = 1200000; // Timeout in milliseconds
 
@@ -174,33 +120,6 @@ public class VmwareClient {
         ctxt.put("com.sun.xml.internal.ws.request.timeout", vCenterSessionTimeout);
         ctxt.put("com.sun.xml.internal.ws.connect.timeout", vCenterSessionTimeout);
 
-        ServiceContent serviceContent = vimPort.retrieveServiceContent(svcInstRef);
-
-        // Extract a cookie. See vmware sample program com.vmware.httpfileaccess.GetVMFiles
-        @SuppressWarnings("unchecked")
-        Map<String, List<String>> headers = (Map<String, List<String>>)((BindingProvider)vimPort).getResponseContext().get(MessageContext.HTTP_RESPONSE_HEADERS);
-        List<String> cookies = headers.get("Set-cookie");
-
-        vimPort.login(serviceContent.getSessionManager(), userName, password, null);
-
-        if (cookies == null) {
-            // Get the cookie from the response header. See vmware sample program com.vmware.httpfileaccess.GetVMFiles
-            @SuppressWarnings("unchecked")
-            Map<String, List<String>> responseHeaders = (Map<String, List<String>>)((BindingProvider)vimPort).getResponseContext().get(MessageContext.HTTP_RESPONSE_HEADERS);
-            cookies = responseHeaders.get("Set-cookie");
-            if (cookies == null) {
-                String msg = "Login successful, but failed to get server cookies from url :[" + url + "]";
-                s_logger.error(msg);
-                throw new Exception(msg);
-            }
-        }
-
-        String cookieValue = cookies.get(0);
-        StringTokenizer tokenizer = new StringTokenizer(cookieValue, ";");
-        cookieValue = tokenizer.nextToken();
-        String pathData = "$" + tokenizer.nextToken();
-        serviceCookie = "$Version=\"1\"; " + cookieValue + "; " + pathData;
-
         isConnected = true;
     }
 
@@ -234,13 +153,6 @@ public class VmwareClient {
         } catch (RuntimeFaultFaultMsg e) {
         }
         return null;
-    }
-
-    /**
-     * @return cookie used in service connection
-     */
-    public String getServiceCookie() {
-        return serviceCookie;
     }
 
     /**
