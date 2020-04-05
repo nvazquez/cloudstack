@@ -39,3 +39,6 @@ mvn install:install-file -Dfile=vim25_65.jar        -DgroupId=com.cloud.com.vmwa
 
 # From https://my.vmware.com/group/vmware/details?downloadGroup=WEBCLIENTSDK67U2&productId=742
 mvn install:install-file -Dfile=vim25_67.jar        -DgroupId=com.cloud.com.vmware -DartifactId=vmware-vim25    -Dversion=6.7   -Dpackaging=jar
+
+# Install Vmware Automation Samples from Automation SDK: https://github.com/vmware/vsphere-automation-sdk-java
+mvn install:install-file -Dfile=vsphere-samples-7.0.0.jar   -DgroupId=com.cloud.com.vmware -DartifactId=vmware-samples    -Dversion=7.0   -Dpackaging=jar
