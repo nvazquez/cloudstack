@@ -30,6 +30,9 @@ import javax.xml.ws.BindingProvider;
 import javax.xml.ws.WebServiceException;
 import javax.xml.ws.handler.MessageContext;
 
+import com.vmware.vapi.bindings.StubConfiguration;
+import com.vmware.vapi.protocol.HttpConfiguration;
+import com.vmware.vcenter.VM;
 import org.apache.cloudstack.utils.security.SSLUtils;
 import org.apache.cloudstack.utils.security.SecureSSLSocketFactory;
 import org.apache.log4j.Logger;
@@ -59,8 +62,10 @@ import com.vmware.vim25.TaskInfoState;
 import com.vmware.vim25.TraversalSpec;
 import com.vmware.vim25.UpdateSet;
 import com.vmware.vim25.VimPortType;
-import com.vmware.vim25.VimService;
 import com.vmware.vim25.WaitOptions;
+import vmware.samples.common.SslUtil;
+import vmware.samples.common.authentication.VapiAuthenticationHelper;
+import vmware.samples.common.authentication.VimAuthenticationHelper;
 
 /**
  * A wrapper class to handle Vmware vsphere connection and disconnection.
@@ -99,8 +104,6 @@ public class VmwareClient {
                 }
             };
             HttpsURLConnection.setDefaultHostnameVerifier(hv);
-
-            vimService = new VimService();
         } catch (Exception e) {
             s_logger.info("[ignored]"
                     + "failed to trust all certificates blindly: ", e);
@@ -120,13 +123,29 @@ public class VmwareClient {
     }
 
     private final ManagedObjectReference svcInstRef = new ManagedObjectReference();
-    private static VimService vimService;
     private VimPortType vimPort;
     private String serviceCookie;
     private final static String SVC_INST_NAME = "ServiceInstance";
     private int vCenterSessionTimeout = 1200000; // Timeout in milliseconds
 
     private boolean isConnected = false;
+
+    private VapiAuthenticationHelper vapiAuthHelper = new VapiAuthenticationHelper();
+    private VimAuthenticationHelper vimAuthHelper = new VimAuthenticationHelper();
+    private StubConfiguration sessionStubConfig;
+    private VM vmService;
+
+    protected HttpConfiguration.SslConfiguration buildSslConfiguration() throws Exception {
+        HttpConfiguration.SslConfiguration sslConfig;
+        SslUtil.trustAllHttpsCertificates();
+        sslConfig = (new com.vmware.vapi.protocol.HttpConfiguration.SslConfiguration.Builder()).disableCertificateValidation().disableHostnameVerification().getConfig();
+        return sslConfig;
+    }
+
+    protected HttpConfiguration buildHttpConfiguration() throws Exception {
+        HttpConfiguration httpConfig = (new HttpConfiguration.Builder()).setSslConfiguration(this.buildSslConfiguration()).getConfig();
+        return httpConfig;
+    }
 
     public VmwareClient(String name) {
     }
@@ -137,11 +156,16 @@ public class VmwareClient {
      * @throws Exception
      *             the exception
      */
-    public void connect(String url, String userName, String password) throws Exception {
+    public void connect(String url, String userName, String password, String vCenterAddress) throws Exception {
         svcInstRef.setType(SVC_INST_NAME);
         svcInstRef.setValue(SVC_INST_NAME);
 
-        vimPort = vimService.getVimPort();
+        HttpConfiguration httpConfig = buildHttpConfiguration();
+        sessionStubConfig = vapiAuthHelper.loginByUsernameAndPassword(vCenterAddress, userName, password, httpConfig);
+        vimAuthHelper.loginByUsernameAndPassword(vCenterAddress, userName, password);
+        vmService = (VM) vapiAuthHelper.getStubFactory().createStub(VM.class, sessionStubConfig);
+
+        vimPort = vimAuthHelper.getVimPort();
         Map<String, Object> ctxt = ((BindingProvider)vimPort).getRequestContext();
 
         ctxt.put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY, url);
@@ -188,6 +212,7 @@ public class VmwareClient {
     public void disconnect() throws Exception {
         if (isConnected) {
             vimPort.logout(getServiceContent().getSessionManager());
+            vimAuthHelper.logout();
         }
         isConnected = false;
     }
@@ -714,4 +739,7 @@ public class VmwareClient {
         return vCenterSessionTimeout;
     }
 
+    public VM getAutomationVMService() {
+        return vmService;
+    }
 }

@@ -44,7 +44,7 @@ public class VmwareSecondaryStorageContextFactory {
         String serviceUrl = "https://" + vCenterAddress + "/sdk/vimService";
         VmwareClient vimClient = new VmwareClient(vCenterAddress + "-" + s_seq++);
         vimClient.setVcenterSessionTimeout(s_vCenterSessionTimeout);
-        vimClient.connect(serviceUrl, vCenterUserName, vCenterPassword);
+        vimClient.connect(serviceUrl, vCenterUserName, vCenterPassword, vCenterAddress);
         VmwareContext context = new VmwareContext(vimClient, vCenterAddress);
         assert (context != null);
 

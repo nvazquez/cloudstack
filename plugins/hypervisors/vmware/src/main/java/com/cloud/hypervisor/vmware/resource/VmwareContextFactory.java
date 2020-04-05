@@ -67,7 +67,7 @@ public class VmwareContextFactory {
 
         VmwareClient vimClient = new VmwareClient(vCenterAddress + "-" + s_seq++);
         vimClient.setVcenterSessionTimeout(s_vmwareMgr.getVcenterSessionTimeout());
-        vimClient.connect(serviceUrl, vCenterUserName, vCenterPassword);
+        vimClient.connect(serviceUrl, vCenterUserName, vCenterPassword, vCenterAddress);
 
         VmwareContext context = new VmwareContext(vimClient, vCenterAddress);
         context.registerStockObject(VmwareManager.CONTEXT_STOCK_NAME, s_vmwareMgr);

@@ -50,7 +50,7 @@ public class TestVmwareContextFactory {
 
         VmwareClient vimClient = new VmwareClient(vCenterAddress + "-" + s_seq++);
         vimClient.setVcenterSessionTimeout(1200000);
-        vimClient.connect(serviceUrl, vCenterUserName, vCenterPassword);
+        vimClient.connect(serviceUrl, vCenterUserName, vCenterPassword, vCenterAddress);
 
         VmwareContext context = new VmwareContext(vimClient, vCenterAddress);
         return context;
