@@ -16,10 +16,16 @@
 // under the License.
 package com.cloud.hypervisor.vmware.mo;
 
+import com.cloud.hypervisor.vmware.util.VmwareAutomationHelper;
 import com.vmware.vapi.bindings.StubConfiguration;
+import com.vmware.vapi.bindings.StubFactory;
 import com.vmware.vapi.protocol.HttpConfiguration;
+import com.vmware.vcenter.Network;
+import com.vmware.vcenter.NetworkTypes;
 import com.vmware.vcenter.VM;
 import com.vmware.vcenter.VMTypes;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import vmware.samples.common.SslUtil;
 import vmware.samples.common.authentication.VapiAuthenticationHelper;
@@ -27,8 +33,10 @@ import vmware.samples.common.authentication.VimAuthenticationHelper;
 import vmware.samples.vcenter.helpers.DatacenterHelper;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public class VmwareAutomationTest {
 
@@ -42,6 +50,21 @@ public class VmwareAutomationTest {
     private final String password = "P@ssword123";
     private final String datacenterName = "Trillian";
 
+    @Before
+    public void setup() throws Exception {
+        System.out.println("Connecting to vSphere...");
+        HttpConfiguration httpConfig = buildHttpConfiguration();
+        sessionStubConfig = vapiAuthHelper.loginByUsernameAndPassword(vCenterIp, username, password, httpConfig);
+        vimAuthHelper.loginByUsernameAndPassword(vCenterIp, username, password);
+    }
+
+    @After
+    public void close() {
+        System.out.println("Logging out from vsphere...");
+        vapiAuthHelper.logout();
+        vimAuthHelper.logout();
+    }
+
     protected HttpConfiguration.SslConfiguration buildSslConfiguration() throws Exception {
         HttpConfiguration.SslConfiguration sslConfig;
         SslUtil.trustAllHttpsCertificates();
@@ -54,7 +77,7 @@ public class VmwareAutomationTest {
         return httpConfig;
     }
 
-    protected void run() throws Exception {
+    protected void listVMs() throws Exception {
         VMTypes.FilterSpec.Builder bldr = new VMTypes.FilterSpec.Builder();
         if (null != datacenterName && !datacenterName.isEmpty()) {
             bldr.setDatacenters(Collections.singleton(DatacenterHelper.getDatacenter(vapiAuthHelper.getStubFactory(), sessionStubConfig, datacenterName)));
@@ -83,15 +106,27 @@ public class VmwareAutomationTest {
     }
 
     @Test
-    public void testAutomation() throws Exception {
-        HttpConfiguration httpConfig = buildHttpConfiguration();
-        sessionStubConfig = vapiAuthHelper.loginByUsernameAndPassword(vCenterIp, username, password, httpConfig);
-        vimAuthHelper.loginByUsernameAndPassword(vCenterIp, username, password);
+    public void testCreateVM() throws Exception {
+        System.out.println("Create VM test");
+        vmService = (VM) vapiAuthHelper.getStubFactory().createStub(VM.class, sessionStubConfig);
+        //listVMs();
+        VmwareAutomationHelper helper = new VmwareAutomationHelper();
+        helper.createVM(vapiAuthHelper, sessionStubConfig, vmService, "Nicolas-Test-VM1");
+    }
 
-        vmService = (VM)this.vapiAuthHelper.getStubFactory().createStub(VM.class, sessionStubConfig);
-        run();
-
-        vapiAuthHelper.logout();
-        vimAuthHelper.logout();
+    @Test
+    public void testNetworks() {
+        System.out.println("List networks test");
+        StubFactory stubFactory = vapiAuthHelper.getStubFactory();
+        Network networkService = (Network) stubFactory.createStub(Network.class, sessionStubConfig);
+        Set<String> datacenters = Collections.singleton(DatacenterHelper.getDatacenter(stubFactory, sessionStubConfig, datacenterName));
+        Set<String> networkNames = Collections.emptySet();
+        Set<NetworkTypes.Type> networkTypes = new HashSet(Collections.singletonList(NetworkTypes.Type.STANDARD_PORTGROUP));
+        NetworkTypes.FilterSpec networkFilterSpec = (new NetworkTypes.FilterSpec.Builder()).setDatacenters(datacenters).setNames(networkNames).setTypes(networkTypes).build();
+        List<NetworkTypes.Summary> networkSummaries = networkService.list(networkFilterSpec);
+        System.out.println("network summaries: " + networkSummaries.size());
+        for (NetworkTypes.Summary summary : networkSummaries) {
+            System.out.println(summary.getName() + " - " + summary.getNetwork() + " - " + summary.getType().toString());
+        }
     }
 }
