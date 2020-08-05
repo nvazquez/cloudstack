@@ -83,6 +83,7 @@ import org.apache.cloudstack.api.command.user.vm.UpgradeVMCmd;
 import org.apache.cloudstack.api.command.user.vmgroup.CreateVMGroupCmd;
 import org.apache.cloudstack.api.command.user.vmgroup.DeleteVMGroupCmd;
 import org.apache.cloudstack.api.command.user.volume.ResizeVolumeCmd;
+import org.apache.cloudstack.api.net.NetworkPrerequisiteTO;
 import org.apache.cloudstack.context.CallContext;
 import org.apache.cloudstack.engine.cloud.entity.api.VirtualMachineEntity;
 import org.apache.cloudstack.engine.cloud.entity.api.db.dao.VMNetworkMapDao;
@@ -109,6 +110,7 @@ import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
 import org.apache.cloudstack.storage.datastore.db.TemplateDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.TemplateDataStoreVO;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
@@ -3299,56 +3301,10 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
 
         List<HypervisorType> vpcSupportedHTypes = _vpcMgr.getSupportedVpcHypervisors();
         if (networkIdList == null || networkIdList.isEmpty()) {
-            NetworkVO defaultNetwork = null;
-
-            // if no network is passed in
-            // Check if default virtual network offering has
-            // Availability=Required. If it's true, search for corresponding
-            // network
-            // * if network is found, use it. If more than 1 virtual network is
-            // found, throw an error
-            // * if network is not found, create a new one and use it
-
-            List<NetworkOfferingVO> requiredOfferings = _networkOfferingDao.listByAvailability(Availability.Required, false);
-            if (requiredOfferings.size() < 1) {
-                throw new InvalidParameterValueException("Unable to find network offering with availability=" + Availability.Required
-                        + " to automatically create the network as a part of vm creation");
-            }
-
-            if (requiredOfferings.get(0).getState() == NetworkOffering.State.Enabled) {
-                // get Virtual networks
-                List<? extends Network> virtualNetworks = _networkModel.listNetworksForAccount(owner.getId(), zone.getId(), Network.GuestType.Isolated);
-                if (virtualNetworks == null) {
-                    throw new InvalidParameterValueException("No (virtual) networks are found for account " + owner);
-                }
-                if (virtualNetworks.isEmpty()) {
-                    long physicalNetworkId = _networkModel.findPhysicalNetworkId(zone.getId(), requiredOfferings.get(0).getTags(), requiredOfferings.get(0).getTrafficType());
-                    // Validate physical network
-                    PhysicalNetwork physicalNetwork = _physicalNetworkDao.findById(physicalNetworkId);
-                    if (physicalNetwork == null) {
-                        throw new InvalidParameterValueException("Unable to find physical network with id: " + physicalNetworkId + " and tag: "
-                                + requiredOfferings.get(0).getTags());
-                    }
-                    s_logger.debug("Creating network for account " + owner + " from the network offering id=" + requiredOfferings.get(0).getId() + " as a part of deployVM process");
-                    Network newNetwork = _networkMgr.createGuestNetwork(requiredOfferings.get(0).getId(), owner.getAccountName() + "-network", owner.getAccountName() + "-network",
-                            null, null, null, false, null, owner, null, physicalNetwork, zone.getId(), ACLType.Account, null, null, null, null, true, null, null,
-                            null);
-                    if (newNetwork != null) {
-                        defaultNetwork = _networkDao.findById(newNetwork.getId());
-                    }
-                } else if (virtualNetworks.size() > 1) {
-                    throw new InvalidParameterValueException("More than 1 default Isolated networks are found for account " + owner + "; please specify networkIds");
-                } else {
-                    defaultNetwork = _networkDao.findById(virtualNetworks.get(0).getId());
-                }
-            } else {
-                throw new InvalidParameterValueException("Required network offering id=" + requiredOfferings.get(0).getId() + " is not in " + NetworkOffering.State.Enabled);
-            }
-
+            NetworkVO defaultNetwork = getDefaultNetwork(zone, owner, false);
             if (defaultNetwork != null) {
                 networkList.add(defaultNetwork);
             }
-
         } else {
             for (Long networkId : networkIdList) {
                 NetworkVO network = _networkDao.findById(networkId);
@@ -3383,6 +3339,91 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
         return createVirtualMachine(zone, serviceOffering, template, hostName, displayName, owner, diskOfferingId, diskSize, networkList, null, group, httpmethod, userData,
                 sshKeyPair, hypervisor, caller, requestedIps, defaultIps, displayvm, keyboard, affinityGroupIdList, customParametrs, customId, dhcpOptionsMap,
                 dataDiskTemplateToDiskOfferingMap, userVmOVFPropertiesMap);
+    }
+
+    private NetworkVO getNetworkToAddToNetworkList(VirtualMachineTemplate template, Account owner, HypervisorType hypervisor,
+            List<HypervisorType> vpcSupportedHTypes, Long networkId) {
+        NetworkVO network = _networkDao.findById(networkId);
+        if (network == null) {
+            throw new InvalidParameterValueException("Unable to find network by id " + networkId);
+        }
+        if (network.getVpcId() != null) {
+            // Only ISOs, XenServer, KVM, and VmWare template types are
+            // supported for vpc networks
+            if (template.getFormat() != ImageFormat.ISO && !vpcSupportedHTypes.contains(template.getHypervisorType())) {
+                throw new InvalidParameterValueException("Can't create vm from template with hypervisor " + template.getHypervisorType() + " in vpc network " + network);
+            } else if (template.getFormat() == ImageFormat.ISO && !vpcSupportedHTypes.contains(hypervisor)) {
+                // Only XenServer, KVM, and VMware hypervisors are supported
+                // for vpc networks
+                throw new InvalidParameterValueException("Can't create vm of hypervisor type " + hypervisor + " in vpc network");
+            }
+        }
+
+        _networkModel.checkNetworkPermissions(owner, network);
+
+        // don't allow to use system networks
+        NetworkOffering networkOffering = _entityMgr.findById(NetworkOffering.class, network.getNetworkOfferingId());
+        if (networkOffering.isSystemOnly()) {
+            throw new InvalidParameterValueException("Network id=" + networkId + " is system only and can't be used for vm deployment");
+        }
+        return network;
+    }
+
+    private NetworkVO getDefaultNetwork(DataCenter zone, Account owner, boolean selectAny) throws InsufficientCapacityException, ResourceAllocationException {
+        NetworkVO defaultNetwork = null;
+
+        // if no network is passed in
+        // Check if default virtual network offering has
+        // Availability=Required. If it's true, search for corresponding
+        // network
+        // * if network is found, use it. If more than 1 virtual network is
+        // found, throw an error
+        // * if network is not found, create a new one and use it
+
+        List<NetworkOfferingVO> requiredOfferings = _networkOfferingDao.listByAvailability(Availability.Required, false);
+        if (requiredOfferings.size() < 1) {
+            throw new InvalidParameterValueException("Unable to find network offering with availability=" + Availability.Required
+                    + " to automatically create the network as a part of vm creation");
+        }
+
+        if (requiredOfferings.get(0).getState() == NetworkOffering.State.Enabled) {
+            // get Virtual networks
+            List<? extends Network> virtualNetworks = _networkModel.listNetworksForAccount(owner.getId(), zone.getId(), Network.GuestType.Isolated);
+            if (virtualNetworks == null) {
+                throw new InvalidParameterValueException("No (virtual) networks are found for account " + owner);
+            }
+            if (virtualNetworks.isEmpty()) {
+                defaultNetwork = createDefaultNetworkForAccount(zone, owner, requiredOfferings);
+            } else if (virtualNetworks.size() > 1 && !selectAny) {
+                throw new InvalidParameterValueException("More than 1 default Isolated networks are found for account " + owner + "; please specify networkIds");
+            } else {
+                defaultNetwork = _networkDao.findById(virtualNetworks.get(0).getId());
+            }
+        } else {
+            throw new InvalidParameterValueException("Required network offering id=" + requiredOfferings.get(0).getId() + " is not in " + NetworkOffering.State.Enabled);
+        }
+
+        return defaultNetwork;
+    }
+
+    private NetworkVO createDefaultNetworkForAccount(DataCenter zone, Account owner, List<NetworkOfferingVO> requiredOfferings)
+            throws InsufficientCapacityException, ResourceAllocationException {
+        NetworkVO defaultNetwork = null;
+        long physicalNetworkId = _networkModel.findPhysicalNetworkId(zone.getId(), requiredOfferings.get(0).getTags(), requiredOfferings.get(0).getTrafficType());
+        // Validate physical network
+        PhysicalNetwork physicalNetwork = _physicalNetworkDao.findById(physicalNetworkId);
+        if (physicalNetwork == null) {
+            throw new InvalidParameterValueException("Unable to find physical network with id: " + physicalNetworkId + " and tag: "
+                    + requiredOfferings.get(0).getTags());
+        }
+        s_logger.debug("Creating network for account " + owner + " from the network offering id=" + requiredOfferings.get(0).getId() + " as a part of deployVM process");
+        Network newNetwork = _networkMgr.createGuestNetwork(requiredOfferings.get(0).getId(), owner.getAccountName() + "-network", owner.getAccountName() + "-network",
+                null, null, null, false, null, owner, null, physicalNetwork, zone.getId(), ACLType.Account, null, null, null, null, true, null, null,
+                null);
+        if (newNetwork != null) {
+            defaultNetwork = _networkDao.findById(newNetwork.getId());
+        }
+        return defaultNetwork;
     }
 
     private void verifyExtraDhcpOptionsNetwork(Map<String, Map<Integer, String>> dhcpOptionsMap, List<NetworkVO> networkList) throws InvalidParameterValueException {
@@ -3636,12 +3677,11 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
             sshPublicKey = pair.getPublicKey();
         }
 
-        List<Pair<NetworkVO, NicProfile>> networks = new ArrayList<Pair<NetworkVO, NicProfile>>();
-
-        LinkedHashMap<String, NicProfile> networkNicMap = new LinkedHashMap<String, NicProfile>();
+        LinkedHashMap<String, List<NicProfile>> networkNicMap = new LinkedHashMap<>();
 
         short defaultNetworkNumber = 0;
         boolean securityGroupEnabled = false;
+        int networkIndex = 0;
         for (NetworkVO network : networkList) {
             if ((network.getDataCenterId() != zone.getId())) {
                 if (!network.isStrechedL2Network()) {
@@ -3679,7 +3719,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
             }
 
             NicProfile profile = new NicProfile(requestedIpPair.getIp4Address(), requestedIpPair.getIp6Address(), requestedIpPair.getMacAddress());
-
+            profile.setOrderIndex(networkIndex);
             if (defaultNetworkNumber == 0) {
                 defaultNetworkNumber++;
                 // if user requested specific ip for default network, add it
@@ -3706,13 +3746,16 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
                 }
             }
 
-            networks.add(new Pair<NetworkVO, NicProfile>(network, profile));
-
             if (_networkModel.isSecurityGroupSupportedInNetwork(network)) {
                 securityGroupEnabled = true;
             }
-
-            networkNicMap.put(network.getUuid(), profile);
+            List<NicProfile> profiles = networkNicMap.get(network.getUuid());
+            if (CollectionUtils.isEmpty(profiles)) {
+                profiles = new ArrayList<>();
+            }
+            profiles.add(profile);
+            networkNicMap.put(network.getUuid(), profiles);
+            networkIndex++;
         }
 
         if (securityGroupIdList != null && !securityGroupIdList.isEmpty() && !securityGroupEnabled) {
@@ -3843,7 +3886,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
 
     private UserVmVO commitUserVm(final boolean isImport, final DataCenter zone, final Host host, final Host lastHost, final VirtualMachineTemplate template, final String hostName, final String displayName, final Account owner,
                                   final Long diskOfferingId, final Long diskSize, final String userData, final Account caller, final Boolean isDisplayVm, final String keyboard,
-                                  final long accountId, final long userId, final ServiceOffering offering, final boolean isIso, final String sshPublicKey, final LinkedHashMap<String, NicProfile> networkNicMap,
+                                  final long accountId, final long userId, final ServiceOffering offering, final boolean isIso, final String sshPublicKey, final LinkedHashMap<String, List<NicProfile>> networkNicMap,
                                   final long id, final String instanceName, final String uuidName, final HypervisorType hypervisorType, final Map<String, String> customParameters,
                                   final Map<String, Map<Integer, String>> extraDhcpOptionMap, final Map<Long, DiskOffering> dataDiskTemplateToDiskOfferingMap,
                                   final Map<String, String> userVmOVFPropertiesMap, final VirtualMachine.PowerState powerState) throws InsufficientCapacityException {
@@ -4051,7 +4094,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
 
     private UserVmVO commitUserVm(final DataCenter zone, final VirtualMachineTemplate template, final String hostName, final String displayName, final Account owner,
             final Long diskOfferingId, final Long diskSize, final String userData, final Account caller, final Boolean isDisplayVm, final String keyboard,
-            final long accountId, final long userId, final ServiceOfferingVO offering, final boolean isIso, final String sshPublicKey, final LinkedHashMap<String, NicProfile> networkNicMap,
+            final long accountId, final long userId, final ServiceOfferingVO offering, final boolean isIso, final String sshPublicKey, final LinkedHashMap<String, List<NicProfile>> networkNicMap,
             final long id, final String instanceName, final String uuidName, final HypervisorType hypervisorType, final Map<String, String> customParameters, final Map<String,
             Map<Integer, String>> extraDhcpOptionMap, final Map<Long, DiskOffering> dataDiskTemplateToDiskOfferingMap,
             Map<String, String> userVmOVFPropertiesMap) throws InsufficientCapacityException {
@@ -5167,6 +5210,12 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
             }
         }
 
+        List<Long> networkIds = cmd.getNetworkIds();
+        LinkedHashMap<Integer, Long> userVmNetworkMap = getVmOvfNetworkMapping(zone, owner, template, cmd.getVmNetworkMap());
+        if (MapUtils.isNotEmpty(userVmNetworkMap)) {
+            networkIds = new ArrayList<>(userVmNetworkMap.values());
+        }
+
         String ipAddress = cmd.getIpAddress();
         String ip6Address = cmd.getIp6Address();
         String macAddress = cmd.getMacAddress();
@@ -5183,7 +5232,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
         Map<Long, DiskOffering> dataDiskTemplateToDiskOfferingMap = cmd.getDataDiskTemplateToDiskOfferingMap();
         Map<String, String> userVmOVFProperties = cmd.getVmProperties();
         if (zone.getNetworkType() == NetworkType.Basic) {
-            if (cmd.getNetworkIds() != null) {
+            if (networkIds != null) {
                 throw new InvalidParameterValueException("Can't specify network Ids in Basic zone");
             } else {
                 vm = createBasicSecurityGroupVirtualMachine(zone, serviceOffering, template, getSecurityGroupIdList(cmd), owner, name, displayName, diskOfferingId,
@@ -5193,7 +5242,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
             }
         } else {
             if (zone.isSecurityGroupEnabled())  {
-                vm = createAdvancedSecurityGroupVirtualMachine(zone, serviceOffering, template, cmd.getNetworkIds(), getSecurityGroupIdList(cmd), owner, name,
+                vm = createAdvancedSecurityGroupVirtualMachine(zone, serviceOffering, template, networkIds, getSecurityGroupIdList(cmd), owner, name,
                         displayName, diskOfferingId, size, group, cmd.getHypervisor(), cmd.getHttpMethod(), userData, sshKeyPairName, cmd.getIpToNetworkMap(), addrs, displayVm, keyboard,
                         cmd.getAffinityGroupIdList(), cmd.getDetails(), cmd.getCustomId(), cmd.getDhcpOptionsMap(),
                         dataDiskTemplateToDiskOfferingMap, userVmOVFProperties);
@@ -5202,7 +5251,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
                 if (cmd.getSecurityGroupIdList() != null && !cmd.getSecurityGroupIdList().isEmpty()) {
                     throw new InvalidParameterValueException("Can't create vm with security groups; security group feature is not enabled per zone");
                 }
-                vm = createAdvancedVirtualMachine(zone, serviceOffering, template, cmd.getNetworkIds(), owner, name, displayName, diskOfferingId, size, group,
+                vm = createAdvancedVirtualMachine(zone, serviceOffering, template, networkIds, owner, name, displayName, diskOfferingId, size, group,
                         cmd.getHypervisor(), cmd.getHttpMethod(), userData, sshKeyPairName, cmd.getIpToNetworkMap(), addrs, displayVm, keyboard, cmd.getAffinityGroupIdList(), cmd.getDetails(),
                         cmd.getCustomId(), cmd.getDhcpOptionsMap(), dataDiskTemplateToDiskOfferingMap, userVmOVFProperties);
             }
@@ -7300,5 +7349,43 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
                         ": ROOT or DATADISK expected but got " + volume.getVolumeType());
             }
         }
+    }
+
+    private LinkedHashMap<Integer, Long> getVmOvfNetworkMapping(DataCenter zone, Account owner, VirtualMachineTemplate template, Map<Integer, Long> vmNetworkMapping) throws InsufficientCapacityException, ResourceAllocationException {
+        LinkedHashMap<Integer, Long> mapping = new LinkedHashMap<>();
+        if (ImageFormat.OVA.equals(template.getFormat())) {
+            List<NetworkPrerequisiteTO> networkPrerequisiteTOList =
+                    templateDetailsDao.listNetworkRequirementsByTemplateId(template.getId());
+            if (CollectionUtils.isNotEmpty(networkPrerequisiteTOList)) {
+                Network lastMappedNetwork = null;
+                for (NetworkPrerequisiteTO networkPrerequisiteTO : networkPrerequisiteTOList) {
+                    Long networkId = vmNetworkMapping.get(networkPrerequisiteTO.getInstanceID());
+                    if (networkId == null && lastMappedNetwork == null) {
+                        lastMappedNetwork = getNetworkForOvfNetworkMapping(zone, owner);
+                    }
+                    if (networkId == null) {
+                        networkId = lastMappedNetwork.getId();
+                    }
+                    mapping.put(networkPrerequisiteTO.getInstanceID(), networkId);
+                }
+            }
+        }
+        return mapping;
+    }
+
+    private Network getNetworkForOvfNetworkMapping(DataCenter zone, Account owner) throws InsufficientCapacityException, ResourceAllocationException {
+        Network network = null;
+        if (zone.isSecurityGroupEnabled()) {
+            network = _networkModel.getNetworkWithSGWithFreeIPs(zone.getId());
+            if (network == null) {
+                throw new InvalidParameterValueException("No network with security enabled is found in zone ID: " + zone.getUuid());
+            }
+        } else {
+            network = getDefaultNetwork(zone, owner, true);
+            if (network == null) {
+                throw new InvalidParameterValueException(String.format("Default network not found for zone ID: %s and account ID: %s", zone.getUuid(), owner.getUuid()));
+            }
+        }
+        return network;
     }
 }
