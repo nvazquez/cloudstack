@@ -21,6 +21,8 @@ import java.util.Date;
 import javax.inject.Inject;
 
 import com.cloud.storage.MigrationOptions;
+import com.cloud.storage.VMTemplateVO;
+import com.cloud.storage.dao.VMTemplateDao;
 import org.apache.log4j.Logger;
 
 import org.apache.cloudstack.engine.subsystem.api.storage.DataObjectInStore;
@@ -72,6 +74,8 @@ public class VolumeObject implements VolumeInfo {
     VMInstanceDao vmInstanceDao;
     @Inject
     DiskOfferingDao diskOfferingDao;
+    @Inject
+    VMTemplateDao templateDao;
     private Object payload;
     private MigrationOptions migrationOptions;
     private boolean directDownload;
@@ -433,6 +437,12 @@ public class VolumeObject implements VolumeInfo {
                 objectInStoreMgr.deleteIfNotReady(this);
             }
         }
+    }
+
+    @Override
+    public boolean isDeployAsIs() {
+        VMTemplateVO template = templateDao.findById(getTemplateId());
+        return template != null && template.isDeployAsIs();
     }
 
     @Override

@@ -23,6 +23,9 @@ import org.apache.cloudstack.api.ApiConstants;
 import org.apache.cloudstack.api.BaseResponse;
 import org.apache.cloudstack.api.EntityReference;
 
+/**
+ * the placeholder of parameters to fill for deployment
+ */
 @EntityReference(value = OVFProperty.class)
 public class TemplateOVFPropertyResponse extends BaseResponse {
 
@@ -57,6 +60,19 @@ public class TemplateOVFPropertyResponse extends BaseResponse {
     @SerializedName(ApiConstants.DESCRIPTION)
     @Param(description = "the ovf property label")
     private String description;
+
+    @Override
+    public boolean equals(Object other) {
+        if (!(other instanceof TemplateOVFPropertyResponse)) {
+            return false;
+        }
+        return key != null && key.equals(((TemplateOVFPropertyResponse)other).key);
+    }
+
+    @Override
+    public int hashCode() {
+        return key.hashCode();
+    }
 
     public String getKey() {
         return key;

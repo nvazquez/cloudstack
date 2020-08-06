@@ -25,6 +25,10 @@ import java.util.Set;
 
 import javax.inject.Inject;
 
+import com.cloud.agent.api.storage.OVFPropertyTO;
+import com.cloud.storage.ImageStore;
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import org.apache.cloudstack.utils.security.DigestHelper;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
@@ -222,6 +226,7 @@ public class TemplateJoinDaoImpl extends GenericDaoBaseWithTagInformation<Templa
         }
 
         templateResponse.setDirectDownload(template.isDirectDownload());
+        templateResponse.setDeployAsIs(template.isDeployAsIs());
         templateResponse.setRequiresHvm(template.isRequiresHvm());
 
         //set template children disks
@@ -290,15 +295,21 @@ public class TemplateJoinDaoImpl extends GenericDaoBaseWithTagInformation<Templa
 
     @Override
     public TemplateResponse setTemplateResponse(ResponseView view, TemplateResponse templateResponse, TemplateJoinVO template) {
+        Gson gson = new Gson();
 
         // update details map
-        if (template.getDetailName() != null) {
-            Map<String, String> details = templateResponse.getDetails();
-            if (details == null) {
-                details = new HashMap<>();
+        String key = template.getDetailName();
+        if (key != null) {
+            if (key.startsWith(ImageStore.ACS_PROPERTY_PREFIX)) {
+                try {
+                    OVFPropertyTO property = gson.fromJson(template.getDetailValue(), OVFPropertyTO.class);
+                    templateResponse.addProperty(createTemplateOVFPropertyResponse(property));
+                } catch (JsonSyntaxException e) {
+                    s_logger.warn(String.format("found an unexpected property for template '%s'; %s: %s",
+                            template.getUuid(), template.getDetailName(), template.getDetailValue()));
+                }
             }
-            details.put(template.getDetailName(), template.getDetailValue());
-            templateResponse.setDetails(details);
+            templateResponse.addDetail(key, template.getDetailValue());
         }
 
         // update tag information

@@ -260,7 +260,8 @@ public class ApiConstants {
     public static final String OUTOFBANDMANAGEMENT_POWERSTATE = "outofbandmanagementpowerstate";
     public static final String OUTOFBANDMANAGEMENT_ENABLED = "outofbandmanagementenabled";
     public static final String OUTPUT = "output";
-    public static final String OVF_PROPERTIES = "ovfproperties";
+    public static final String PROPERTIES = "properties";
+    public static final String ACS_PROPERTY = "ACS-property";
     public static final String PARAMS = "params";
     public static final String PARENT_ID = "parentid";
     public static final String PARENT_DOMAIN_ID = "parentdomainid";
@@ -818,6 +819,10 @@ public class ApiConstants {
     public static final String BOOT_TYPE = "boottype";
     public static final String BOOT_MODE = "bootmode";
     public static final String BOOT_INTO_SETUP = "bootintosetup";
+    public static final String DEPLOY_AS_IS = "deployasis";
+    public static final String CROSS_ZONES = "crossZones";
+    public static final String TEMPLATETYPE = "templatetype";
+    public static final String SOURCETEMPLATEID = "sourcetemplateid";
 
     public enum BootType {
         UEFI, BIOS;

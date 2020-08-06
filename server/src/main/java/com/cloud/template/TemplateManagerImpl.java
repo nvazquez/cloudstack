@@ -32,6 +32,7 @@ import java.util.concurrent.Executors;
 import javax.inject.Inject;
 import javax.naming.ConfigurationException;
 
+import com.cloud.agent.api.to.DatadiskTO;
 import org.apache.cloudstack.acl.SecurityChecker.AccessType;
 import org.apache.cloudstack.api.ApiConstants;
 import org.apache.cloudstack.api.BaseListTemplateOrIsoPermissionsCmd;
@@ -1885,7 +1886,7 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
         }
         privateTemplate = new VMTemplateVO(nextTemplateId, name, ImageFormat.RAW, isPublic, featured, isExtractable,
                 TemplateType.USER, null, requiresHvmValue, bitsValue, templateOwner.getId(), null, description,
-                passwordEnabledValue, guestOS.getId(), true, hyperType, templateTag, cmd.getDetails(), sshKeyEnabledValue, isDynamicScalingEnabled, false);
+                passwordEnabledValue, guestOS.getId(), true, hyperType, templateTag, cmd.getDetails(), sshKeyEnabledValue, isDynamicScalingEnabled, false, false);
 
         if (sourceTemplateId != null) {
             if (s_logger.isDebugEnabled()) {
@@ -2210,5 +2211,16 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
     @Inject
     public void setTemplateAdapters(List<TemplateAdapter> adapters) {
         _adapters = adapters;
+    }
+
+    @Override
+    public List<DatadiskTO> getTemplateDisksOnImageStore(Long templateId, DataStoreRole role) {
+        TemplateInfo templateObject = _tmplFactory.getTemplate(templateId, role);
+        if (templateObject == null) {
+            String msg = String.format("Could not find template %s downloaded on store with role %s", templateId, role.toString());
+            s_logger.error(msg);
+            throw new CloudRuntimeException(msg);
+        }
+        return _tmpltSvr.getTemplateDatadisksOnImageStore(templateObject);
     }
 }

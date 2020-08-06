@@ -221,10 +221,10 @@ public class DeployVMCmd extends BaseAsyncCreateCustomIdCmd implements SecurityG
     @Parameter(name = ApiConstants.COPY_IMAGE_TAGS, type = CommandType.BOOLEAN, since = "4.13", description = "if true the image tags (if any) will be copied to the VM, default value is false")
     private Boolean copyImageTags;
 
-    @Parameter(name = ApiConstants.OVF_PROPERTIES, type = CommandType.MAP, since = "4.13",
-            description = "used to specify the OVF properties.")
+    @Parameter(name = ApiConstants.PROPERTIES, type = CommandType.MAP, since = "4.15",
+            description = "used to specify the vApp properties.")
     @LogLevel(LogLevel.Log4jLevel.Off)
-    private Map vmOvfProperties;
+    private Map vAppProperties;
 
     /////////////////////////////////////////////////////
     /////////////////// Accessors ///////////////////////
@@ -312,10 +312,10 @@ public class DeployVMCmd extends BaseAsyncCreateCustomIdCmd implements SecurityG
     }
 
 
-    public Map<String, String> getVmOVFProperties() {
+    public Map<String, String> getVmProperties() {
         Map<String, String> map = new HashMap<>();
-        if (MapUtils.isNotEmpty(vmOvfProperties)) {
-            Collection parameterCollection = vmOvfProperties.values();
+        if (MapUtils.isNotEmpty(vAppProperties)) {
+            Collection parameterCollection = vAppProperties.values();
             Iterator iterator = parameterCollection.iterator();
             while (iterator.hasNext()) {
                 HashMap<String, String> entry = (HashMap<String, String>)iterator.next();

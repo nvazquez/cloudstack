@@ -412,7 +412,7 @@ public class TemplateServiceImpl implements TemplateService {
                                         VirtualMachineTemplate.Event event = VirtualMachineTemplate.Event.OperationSucceeded;
                                         // For multi-disk OVA, check and create data disk templates
                                         if (tmplt.getFormat().equals(ImageFormat.OVA)) {
-                                            if (!createOvaDataDiskTemplates(_templateFactory.getTemplate(tmlpt.getId(), store))) {
+                                            if (!createOvaDataDiskTemplates(_templateFactory.getTemplate(tmlpt.getId(), store), tmplt.isDeployAsIs())) {
                                                 event = VirtualMachineTemplate.Event.OperationFailed;
                                             }
                                         }
@@ -710,7 +710,7 @@ public class TemplateServiceImpl implements TemplateService {
 
         // For multi-disk OVA, check and create data disk templates
         if (template.getFormat().equals(ImageFormat.OVA)) {
-            if (!createOvaDataDiskTemplates(template)) {
+            if (!createOvaDataDiskTemplates(template, template.isDeployAsIs())) {
                 template.processEvent(ObjectInDataStoreStateMachine.Event.OperationFailed);
                 result.setResult(callbackResult.getResult());
                 if (parentCallback != null) {
@@ -737,7 +737,13 @@ public class TemplateServiceImpl implements TemplateService {
     }
 
     @Override
-    public boolean createOvaDataDiskTemplates(TemplateInfo parentTemplate) {
+    public List<DatadiskTO> getTemplateDatadisksOnImageStore(TemplateInfo templateInfo) {
+        ImageStoreEntity tmpltStore = (ImageStoreEntity)templateInfo.getDataStore();
+        return tmpltStore.getDataDiskTemplates(templateInfo);
+    }
+
+    @Override
+    public boolean createOvaDataDiskTemplates(TemplateInfo parentTemplate, boolean deployAsIs) {
         try {
             // Get Datadisk template (if any) for OVA
             List<DatadiskTO> dataDiskTemplates = new ArrayList<DatadiskTO>();
@@ -754,23 +760,27 @@ public class TemplateServiceImpl implements TemplateService {
                     details = new HashMap<>();
                 }
             }
+
             for (DatadiskTO diskTemplate : dataDiskTemplates) {
-                if (!diskTemplate.isBootable()) {
-                    createChildDataDiskTemplate(diskTemplate, templateVO, parentTemplate, imageStore, diskCount++);
-                    if (!diskTemplate.isIso() && Strings.isNullOrEmpty(details.get(VmDetailConstants.DATA_DISK_CONTROLLER))){
-                        details.put(VmDetailConstants.DATA_DISK_CONTROLLER, getOvaDiskControllerDetails(diskTemplate, false));
-                        details.put(VmDetailConstants.DATA_DISK_CONTROLLER + diskTemplate.getDiskId(), getOvaDiskControllerDetails(diskTemplate, false));
-                    }
-                } else {
-                    finalizeParentTemplate(diskTemplate, templateVO, parentTemplate, imageStore, diskCount++);
-                    if (Strings.isNullOrEmpty(VmDetailConstants.ROOT_DISK_CONTROLLER)) {
-                        final String rootDiskController = getOvaDiskControllerDetails(diskTemplate, true);
-                        if (!Strings.isNullOrEmpty(rootDiskController)) {
-                            details.put(VmDetailConstants.ROOT_DISK_CONTROLLER, rootDiskController);
+                if (!deployAsIs) {
+                    if (!diskTemplate.isBootable()) {
+                        createChildDataDiskTemplate(diskTemplate, templateVO, parentTemplate, imageStore, diskCount++);
+                        if (!diskTemplate.isIso() && Strings.isNullOrEmpty(details.get(VmDetailConstants.DATA_DISK_CONTROLLER))){
+                            details.put(VmDetailConstants.DATA_DISK_CONTROLLER, getOvaDiskControllerDetails(diskTemplate, false));
+                            details.put(VmDetailConstants.DATA_DISK_CONTROLLER + diskTemplate.getDiskId(), getOvaDiskControllerDetails(diskTemplate, false));
+                        }
+                    } else {
+                        finalizeParentTemplate(diskTemplate, templateVO, parentTemplate, imageStore, diskCount++);
+                        if (Strings.isNullOrEmpty(VmDetailConstants.ROOT_DISK_CONTROLLER)) {
+                            final String rootDiskController = getOvaDiskControllerDetails(diskTemplate, true);
+                            if (!Strings.isNullOrEmpty(rootDiskController)) {
+                                details.put(VmDetailConstants.ROOT_DISK_CONTROLLER, rootDiskController);
+                            }
                         }
                     }
                 }
             }
+
             templateVO.setDetails(details);
             _templateDao.saveDetails(templateVO);
             return true;
@@ -789,7 +799,7 @@ public class TemplateServiceImpl implements TemplateService {
         String templateName = dataDiskTemplate.isIso() ? dataDiskTemplate.getPath().substring(dataDiskTemplate.getPath().lastIndexOf(File.separator) + 1) : template.getName() + suffix + diskCount;
         VMTemplateVO templateVO = new VMTemplateVO(templateId, templateName, format, false, false, false, ttype, template.getUrl(),
                 template.requiresHvm(), template.getBits(), template.getAccountId(), null, templateName, false, guestOsId, false, template.getHypervisorType(), null,
-                null, false, false, false);
+                null, false, false, false, false);
         if (dataDiskTemplate.isIso()){
             templateVO.setUniqueName(templateName);
         }
@@ -1261,7 +1271,7 @@ public class TemplateServiceImpl implements TemplateService {
     }
 
     protected Void createDatadiskTemplateCallback(AsyncCallbackDispatcher<TemplateServiceImpl, CreateCmdResult> callback,
-            CreateDataDiskTemplateContext<TemplateApiResult> context) {
+                                                  CreateDataDiskTemplateContext<TemplateApiResult> context) {
         DataObject dataDiskTemplate = context.dataDiskTemplate;
         AsyncCallFuture<TemplateApiResult> future = context.getFuture();
         CreateCmdResult result = callback.getResult();

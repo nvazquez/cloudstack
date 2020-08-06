@@ -33,15 +33,15 @@ import com.cloud.network.NetworkModel;
 import com.cloud.network.Networks;
 import com.cloud.network.dao.NetworkDao;
 import com.cloud.network.dao.NetworkVO;
+import com.cloud.storage.DataStoreRole;
 import com.cloud.storage.GuestOSHypervisorVO;
 import com.cloud.storage.GuestOSVO;
-import com.cloud.storage.TemplateOVFPropertyVO;
 import com.cloud.storage.VMTemplateStoragePoolVO;
 import com.cloud.storage.VMTemplateStorageResourceAssoc;
 import com.cloud.storage.Volume;
 import com.cloud.storage.dao.GuestOSDao;
 import com.cloud.storage.dao.GuestOSHypervisorDao;
-import com.cloud.storage.dao.TemplateOVFPropertiesDao;
+import com.cloud.storage.dao.VMTemplateDetailsDao;
 import com.cloud.storage.dao.VMTemplatePoolDao;
 import com.cloud.template.VirtualMachineTemplate;
 import com.cloud.utils.Pair;
@@ -56,6 +56,7 @@ import com.cloud.vm.dao.NicDao;
 import org.apache.cloudstack.api.ApiConstants;
 import org.apache.cloudstack.storage.datastore.db.PrimaryDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
+import org.apache.cloudstack.storage.to.TemplateObjectTO;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.log4j.Logger;
@@ -70,7 +71,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 class VmwareVmImplementer {
-    private static final Logger LOG = Logger.getLogger(VmwareVmImplementer.class);
+    private static final Logger LOGGER = Logger.getLogger(VmwareVmImplementer.class);
 
     @Inject
     DomainRouterDao domainRouterDao;
@@ -89,9 +90,9 @@ class VmwareVmImplementer {
     @Inject
     PrimaryDataStoreDao storagePoolDao;
     @Inject
-    TemplateOVFPropertiesDao templateOVFPropertiesDao;
-    @Inject
     VMTemplatePoolDao templateStoragePoolDao;
+    @Inject
+    VMTemplateDetailsDao templateDetailsDao;
     @Inject
     VmwareManager vmwareMgr;
 
@@ -116,10 +117,17 @@ class VmwareVmImplementer {
 
     VirtualMachineTO implement(VirtualMachineProfile vm, VirtualMachineTO to, long clusterId) {
         to.setBootloader(VirtualMachineTemplate.BootloaderType.HVM);
-
+        boolean deployAsIs = vm.getTemplate().isDeployAsIs();
+        HostVO host = hostDao.findById(vm.getVirtualMachine().getHostId());
+        // FR37 if VmwareImplementAsIsAndReconsiliate add secondary storage or some other encoding of the OVA file to the start command,
+        // FR37 so the url for the original OVA can be used for deployment
+        if (deployAsIs) {
+            // FR37 we need to make sure the primary storage for the template is known and whether this is a new deployment
+            storeTemplateLocationInTO(vm, to, host.getId());
+        }
         Map<String, String> details = to.getDetails();
         if (details == null)
-            details = new HashMap<String, String>();
+            details = new HashMap<>();
 
         VirtualMachine.Type vmType = vm.getType();
         boolean userVm = !(vmType.equals(VirtualMachine.Type.DomainRouter) || vmType.equals(VirtualMachine.Type.ConsoleProxy) || vmType.equals(VirtualMachine.Type.SecondaryStorageVm));
@@ -133,7 +141,7 @@ class VmwareVmImplementer {
                 try {
                     VirtualEthernetCardType.valueOf(nicDeviceType);
                 } catch (Exception e) {
-                    LOG.warn("Invalid NIC device type " + nicDeviceType + " is specified in VM details, switch to default E1000");
+                    LOGGER.warn("Invalid NIC device type " + nicDeviceType + " is specified in VM details, switch to default E1000");
                     details.put(VmDetailConstants.NIC_ADAPTER, VirtualEthernetCardType.E1000.toString());
                 }
             }
@@ -145,7 +153,7 @@ class VmwareVmImplementer {
                 try {
                     VirtualEthernetCardType.valueOf(nicDeviceType);
                 } catch (Exception e) {
-                    LOG.warn("Invalid NIC device type " + nicDeviceType + " is specified in VM details, switch to default E1000");
+                    LOGGER.warn("Invalid NIC device type " + nicDeviceType + " is specified in VM details, switch to default E1000");
                     details.put(VmDetailConstants.NIC_ADAPTER, VirtualEthernetCardType.E1000.toString());
                 }
             }
@@ -172,7 +180,7 @@ class VmwareVmImplementer {
         GuestOSVO guestOS = guestOsDao.findByIdIncludingRemoved(vm.getVirtualMachine().getGuestOSId());
         to.setOs(guestOS.getDisplayName());
         to.setHostName(vm.getHostName());
-        HostVO host = hostDao.findById(vm.getVirtualMachine().getHostId());
+
         GuestOSHypervisorVO guestOsMapping = null;
         if (host != null) {
             guestOsMapping = guestOsHypervisorDao.findByOsIdAndHypervisor(guestOS.getId(), Hypervisor.HypervisorType.VMware.toString(), host.getHypervisorVersion());
@@ -184,18 +192,66 @@ class VmwareVmImplementer {
         }
 
         List<OVFPropertyTO> ovfProperties = getOvfPropertyList(vm, details);
-
         handleOvfProperties(vm, to, details, ovfProperties);
+
+        // FR37 TODO add required nics here or let the start executor copy them from the base template?
 
         setDetails(to, details);
 
         return to;
     }
 
+    private void storeTemplateLocationInTO(VirtualMachineProfile vm, VirtualMachineTO to, long hostId) {
+        VMTemplateStoragePoolVO templateStoragePoolVO = templateStoragePoolDao.findByHostTemplate(hostId, vm.getTemplate().getId());
+        if (templateStoragePoolVO != null) {
+            long storePoolId = templateStoragePoolVO.getDataStoreId();
+
+            StoragePoolVO storagePoolVO = storagePoolDao.findById(storePoolId);
+            String relativeLocation = storagePoolVO.getUuid();
+
+            String templateName = templateStoragePoolVO.getInstallPath();
+            createDiskTOForTemplateOVA(vm, storagePoolVO);
+
+            to.setTemplateName(templateName);
+            to.setTemplateLocation(relativeLocation);
+            to.setTemplatePrimaryStoreUuid(storagePoolVO.getUuid());
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace(String.format("deploying '%s' OVA as is from %s.", templateName, relativeLocation));
+            }
+        }
+    }
+
+    private void createDiskTOForTemplateOVA(VirtualMachineProfile vm, StoragePoolVO storagePoolVO) {
+        // FR37 store template in diskto with the pool as location
+        DiskTO disk = new DiskTO();
+        TemplateObjectTO data = new TemplateObjectTO(vm.getTemplate());
+        DataStoreTO store = new DataStoreTO() {
+            @Override public DataStoreRole getRole() {
+                return DataStoreRole.ImageCache;
+            }
+
+            @Override public String getUuid() {
+                return storagePoolVO.getUuid();
+            }
+
+            @Override public String getUrl() {
+                return null;
+            }
+
+            @Override public String getPathSeparator() {
+                return "/";
+            }
+        };
+        data.setDataStore(store);
+        disk.setData(data);
+
+        vm.addDisk(disk);
+    }
+
     private void setDetails(VirtualMachineTO to, Map<String, String> details) {
-        if (LOG.isTraceEnabled()) {
+        if (LOGGER.isTraceEnabled()) {
             for (String key: details.keySet()) {
-                LOG.trace(String.format("Detail for VM %s: %s => %s",to.getName(), key, details.get(key)));
+                LOGGER.trace(String.format("Detail for VM %s: %s => %s",to.getName(), key, details.get(key)));
             }
         }
         to.setDetails(details);
@@ -290,12 +346,8 @@ class VmwareVmImplementer {
         if (CollectionUtils.isNotEmpty(ovfProperties)) {
             removeOvfPropertiesFromDetails(ovfProperties, details);
             String templateInstallPath = null;
-            List<DiskTO> rootDiskList = vm.getDisks().stream().filter(x -> x.getType() == Volume.Type.ROOT).collect(Collectors.toList());
-            if (rootDiskList.size() != 1) {
-                throw new CloudRuntimeException("Did not find only one root disk for VM " + vm.getHostName());
-            }
+            DiskTO rootDiskTO = getRootDiskTOFromVM(vm);
 
-            DiskTO rootDiskTO = rootDiskList.get(0);
             DataStoreTO dataStore = rootDiskTO.getData().getDataStore();
             StoragePoolVO storagePoolVO = storagePoolDao.findByUuid(dataStore.getUuid());
             long dataCenterId = storagePoolVO.getDataCenterId();
@@ -317,19 +369,39 @@ class VmwareVmImplementer {
         }
     }
 
+    private DiskTO getRootDiskTOFromVM(VirtualMachineProfile vm) {
+        DiskTO rootDiskTO;
+        List<DiskTO> rootDiskList;
+        rootDiskList = vm.getDisks().stream().filter(x -> x.getType() == Volume.Type.ROOT).collect(Collectors.toList());
+        if (rootDiskList.size() != 1) {
+            if (vm.getTemplate().isDeployAsIs()) { // FR37 dirty hack to avoid ISOs, the start command should have added a root disk to
+                rootDiskList = vm.getDisks().stream().filter(x -> x.getType() == null).collect(Collectors.toList());
+                if (rootDiskList.size() < 1) {
+                    throw new CloudRuntimeException("Did not find a template to serve as root disk for VM " + vm.getHostName());
+                }
+            } else {
+                throw new CloudRuntimeException("Did not find only one root disk for VM " + vm.getHostName());
+            }
+        }
+        rootDiskTO = rootDiskList.get(0);
+        return rootDiskTO;
+    }
+
+    // TODO FR37 phase out ovf properties in favor of template details; propertyTO remains
     private List<OVFPropertyTO> getOvfPropertyList(VirtualMachineProfile vm, Map<String, String> details) {
         List<OVFPropertyTO> ovfProperties = new ArrayList<OVFPropertyTO>();
         for (String detailKey : details.keySet()) {
-            if (detailKey.startsWith(ApiConstants.OVF_PROPERTIES)) {
-                String ovfPropKey = detailKey.replace(ApiConstants.OVF_PROPERTIES + "-", "");
-                TemplateOVFPropertyVO templateOVFPropertyVO = templateOVFPropertiesDao.findByTemplateAndKey(vm.getTemplateId(), ovfPropKey);
-                if (templateOVFPropertyVO == null) {
-                    LOG.warn(String.format("OVF property %s not found on template, discarding", ovfPropKey));
+            if (detailKey.startsWith(ApiConstants.ACS_PROPERTY)) {
+                OVFPropertyTO propertyTO = templateDetailsDao.findPropertyByTemplateAndKey(vm.getTemplateId(), detailKey);
+                String vmPropertyKey = detailKey.replace(ApiConstants.ACS_PROPERTY + "-", "");
+                if (propertyTO == null) {
+                    LOGGER.warn(String.format("OVF property %s not found on template, discarding", vmPropertyKey));
                     continue;
                 }
-                String ovfValue = details.get(detailKey);
-                boolean isPassword = templateOVFPropertyVO.isPassword();
-                OVFPropertyTO propertyTO = new OVFPropertyTO(ovfPropKey, ovfValue, isPassword);
+                // FR37 the key is without acs prefix (in the TO)
+                propertyTO.setKey(vmPropertyKey);
+                // FR37 if the UI send the whole json we should just copy it otherwise take the json from the template and set the value on it
+                propertyTO.setValue(details.get(detailKey));
                 ovfProperties.add(propertyTO);
             }
         }
@@ -389,7 +461,7 @@ class VmwareVmImplementer {
     private void removeOvfPropertiesFromDetails(List<OVFPropertyTO> ovfProperties, Map<String, String> details) {
         for (OVFPropertyTO propertyTO : ovfProperties) {
             String key = propertyTO.getKey();
-            details.remove(ApiConstants.OVF_PROPERTIES + "-" + key);
+            details.remove(ApiConstants.PROPERTIES + "-" + key);
         }
     }
 
@@ -405,8 +477,8 @@ class VmwareVmImplementer {
         Boolean globalNestedVPerVMEnabled = getGlobalNestedVPerVMEnabled();
 
         Boolean shouldEnableNestedVirtualization = shouldEnableNestedVirtualization(globalNestedVirtualisationEnabled, globalNestedVPerVMEnabled, localNestedV);
-        if(LOG.isDebugEnabled()) {
-            LOG.debug(String.format(
+        if(LOGGER.isDebugEnabled()) {
+            LOGGER.debug(String.format(
                     "Due to '%B'(globalNestedVirtualisationEnabled) and '%B'(globalNestedVPerVMEnabled) I'm adding a flag with value %B to the vm configuration for Nested Virtualisation.",
                     globalNestedVirtualisationEnabled,
                     globalNestedVPerVMEnabled,

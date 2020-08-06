@@ -121,6 +121,8 @@ import com.cloud.utils.db.GlobalLock;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.vm.VirtualMachine;
 
+import static com.cloud.storage.resource.StorageProcessor.REQUEST_TEMPLATE_RELOAD;
+
 @Component
 public class VolumeServiceImpl implements VolumeService {
     private static final Logger s_logger = Logger.getLogger(VolumeServiceImpl.class);
@@ -458,7 +460,7 @@ public class VolumeServiceImpl implements VolumeService {
         private final AsyncCallFuture<VolumeApiResult> _future;
 
         public ManagedCreateBaseImageContext(AsyncCompletionCallback<T> callback, VolumeInfo volumeInfo, PrimaryDataStore primaryDatastore, TemplateInfo templateInfo,
-                AsyncCallFuture<VolumeApiResult> future) {
+                                             AsyncCallFuture<VolumeApiResult> future) {
             super(callback);
 
             _volumeInfo = volumeInfo;
@@ -493,7 +495,7 @@ public class VolumeServiceImpl implements VolumeService {
         long templatePoolId;
 
         public CreateBaseImageContext(AsyncCompletionCallback<T> callback, VolumeInfo volume, PrimaryDataStore datastore, TemplateInfo srcTemplate, AsyncCallFuture<VolumeApiResult> future,
-                DataObject destObj, long templatePoolId) {
+                                      DataObject destObj, long templatePoolId) {
             super(callback);
             this.volume = volume;
             this.dataStore = datastore;
@@ -572,7 +574,7 @@ public class VolumeServiceImpl implements VolumeService {
                 s_logger.info("Unable to acquire lock on VMTemplateStoragePool " + templatePoolRefId);
             }
             templatePoolRef = _tmpltPoolDao.findByPoolTemplate(dataStore.getId(), template.getId());
-            if (templatePoolRef != null && templatePoolRef.getState() == ObjectInDataStoreStateMachine.State.Ready) {
+            if (templatePoolRef != null && templatePoolRef.getState() == ObjectInDataStoreStateMachine.State.Ready && !template.isDeployAsIs()) {
                 s_logger.info(
                         "Unable to acquire lock on VMTemplateStoragePool " + templatePoolRefId + ", But Template " + template.getUniqueName() + " is already copied to primary storage, skip copying");
                 createVolumeFromBaseImageAsync(volume, templateOnPrimaryStoreObj, dataStore, future);
@@ -585,7 +587,7 @@ public class VolumeServiceImpl implements VolumeService {
             s_logger.info("lock is acquired for VMTemplateStoragePool " + templatePoolRefId);
         }
         try {
-            if (templatePoolRef.getState() == ObjectInDataStoreStateMachine.State.Ready) {
+            if (templatePoolRef.getState() == ObjectInDataStoreStateMachine.State.Ready && !template.isDeployAsIs()) {
                 s_logger.info("Template " + template.getUniqueName() + " is already copied to primary storage, skip copying");
                 createVolumeFromBaseImageAsync(volume, templateOnPrimaryStoreObj, dataStore, future);
                 return;
@@ -705,9 +707,10 @@ public class VolumeServiceImpl implements VolumeService {
         private final AsyncCallFuture<VolumeApiResult> future;
         private final DataObject templateOnStore;
         private final SnapshotInfo snapshot;
+        private boolean deployAsIs;
 
         public CreateVolumeFromBaseImageContext(AsyncCompletionCallback<T> callback, DataObject vo, DataStore primaryStore, DataObject templateOnStore, AsyncCallFuture<VolumeApiResult> future,
-                SnapshotInfo snapshot) {
+                                                SnapshotInfo snapshot) {
             super(callback);
             this.vo = vo;
             this.future = future;
@@ -721,7 +724,8 @@ public class VolumeServiceImpl implements VolumeService {
     }
 
     @DB
-    protected void createVolumeFromBaseImageAsync(VolumeInfo volume, DataObject templateOnPrimaryStore, PrimaryDataStore pd, AsyncCallFuture<VolumeApiResult> future) {
+    protected void createVolumeFromBaseImageAsync(VolumeInfo volume, DataObject templateOnPrimaryStore, PrimaryDataStore pd,
+                                                  AsyncCallFuture<VolumeApiResult> future) {
         DataObject volumeOnPrimaryStorage = pd.create(volume);
         volumeOnPrimaryStorage.processEvent(Event.CreateOnlyRequested);
 
@@ -730,8 +734,21 @@ public class VolumeServiceImpl implements VolumeService {
         caller.setCallback(caller.getTarget().createVolumeFromBaseImageCallBack(null, null));
         caller.setContext(context);
 
-        motionSrv.copyAsync(context.templateOnStore, volumeOnPrimaryStorage, caller);
+        if (!volume.isDeployAsIs()) {
+            motionSrv.copyAsync(context.templateOnStore, volumeOnPrimaryStorage, caller);
+        } else {
+            Answer answer = new Answer(null);
+            CopyCommandResult result = new CopyCommandResult(null, null);
+            result.setSuccess(true);
+            caller.complete(result);
+        }
+
         return;
+    }
+
+    @DB
+    protected Void createTemplateAsIsCallback(AsyncCallbackDispatcher<VolumeServiceImpl, CopyCommandResult> callback, AsyncCallFuture<VolumeApiResult> context) {
+        return null;
     }
 
     @DB
@@ -750,7 +767,7 @@ public class VolumeServiceImpl implements VolumeService {
             // hack for Vmware: host is down, previously download template to the host needs to be re-downloaded, so we need to reset
             // template_spool_ref entry here to NOT_DOWNLOADED and Allocated state
             Answer ans = result.getAnswer();
-            if (ans != null && ans instanceof CopyCmdAnswer && ans.getDetails().contains("request template reload")) {
+            if (ans != null && ans instanceof CopyCmdAnswer && ans.getDetails().contains(REQUEST_TEMPLATE_RELOAD)) {
                 if (tmplOnPrimary != null) {
                     s_logger.info("Reset template_spool_ref entry so that vmware template can be reloaded in next try");
                     VMTemplateStoragePoolVO templatePoolRef = _tmpltPoolDao.findByPoolTemplate(tmplOnPrimary.getDataStore().getId(), tmplOnPrimary.getId());
@@ -861,7 +878,7 @@ public class VolumeServiceImpl implements VolumeService {
      * @param destHost The host that we will use for the copy
      */
     private void copyTemplateToManagedTemplateVolume(TemplateInfo srcTemplateInfo, TemplateInfo templateOnPrimary, VMTemplateStoragePoolVO templatePoolRef, PrimaryDataStore destPrimaryDataStore,
-            Host destHost) {
+                                                     Host destHost) {
         AsyncCallFuture<VolumeApiResult> copyTemplateFuture = new AsyncCallFuture<>();
         int storagePoolMaxWaitSeconds = NumbersUtil.parseInt(configDao.getValue(Config.StoragePoolMaxWaitSeconds.key()), 3600);
         long templatePoolRefId = templatePoolRef.getId();
@@ -1197,7 +1214,7 @@ public class VolumeServiceImpl implements VolumeService {
     public AsyncCallFuture<VolumeApiResult> createVolumeFromTemplateAsync(VolumeInfo volume, long dataStoreId, TemplateInfo template) {
         PrimaryDataStore pd = dataStoreMgr.getPrimaryDataStore(dataStoreId);
         TemplateInfo templateOnPrimaryStore = pd.getTemplate(template.getId());
-        AsyncCallFuture<VolumeApiResult> future = new AsyncCallFuture<VolumeApiResult>();
+        AsyncCallFuture<VolumeApiResult> future = new AsyncCallFuture<>();
 
         if (templateOnPrimaryStore == null) {
             createBaseImageAsync(volume, pd, template, future);

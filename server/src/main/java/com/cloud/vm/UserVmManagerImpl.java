@@ -47,8 +47,12 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import com.cloud.agent.api.storage.OVFPropertyTO;
 import com.cloud.exception.UnsupportedServiceException;
 import com.cloud.hypervisor.Hypervisor;
+import com.cloud.storage.ImageStore;
+import com.cloud.storage.VMTemplateDetailVO;
+import com.cloud.storage.dao.VMTemplateDetailsDao;
 import org.apache.cloudstack.acl.ControlledEntity.ACLType;
 import org.apache.cloudstack.acl.SecurityChecker.AccessType;
 import org.apache.cloudstack.affinity.AffinityGroupService;
@@ -257,7 +261,6 @@ import com.cloud.storage.Storage.StoragePoolType;
 import com.cloud.storage.Storage.TemplateType;
 import com.cloud.storage.StoragePool;
 import com.cloud.storage.StoragePoolStatus;
-import com.cloud.storage.TemplateOVFPropertyVO;
 import com.cloud.storage.VMTemplateStorageResourceAssoc;
 import com.cloud.storage.VMTemplateVO;
 import com.cloud.storage.VMTemplateZoneVO;
@@ -268,7 +271,6 @@ import com.cloud.storage.dao.DiskOfferingDao;
 import com.cloud.storage.dao.GuestOSCategoryDao;
 import com.cloud.storage.dao.GuestOSDao;
 import com.cloud.storage.dao.SnapshotDao;
-import com.cloud.storage.dao.TemplateOVFPropertiesDao;
 import com.cloud.storage.dao.VMTemplateDao;
 import com.cloud.storage.dao.VMTemplateZoneDao;
 import com.cloud.storage.dao.VolumeDao;
@@ -503,7 +505,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
     @Inject
     private ResourceTagDao resourceTagDao;
     @Inject
-    private TemplateOVFPropertiesDao templateOVFPropertiesDao;
+    private VMTemplateDetailsDao templateDetailsDao;
 
     private ScheduledExecutorService _executor = null;
     private ScheduledExecutorService _vmIpFetchExecutor = null;
@@ -2488,10 +2490,12 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
                     }
                 }
                 for (String detailName : details.keySet()) {
-                    if (detailName.startsWith(ApiConstants.OVF_PROPERTIES)) {
-                        String ovfPropKey = detailName.replace(ApiConstants.OVF_PROPERTIES + "-", "");
-                        TemplateOVFPropertyVO ovfPropertyVO = templateOVFPropertiesDao.findByTemplateAndKey(vmInstance.getTemplateId(), ovfPropKey);
-                        if (ovfPropertyVO != null && ovfPropertyVO.isPassword()) {
+                    if (s_logger.isTraceEnabled()) {
+                        s_logger.trace(String.format("looking for vm detail '%s'", detailName));
+                    }
+                    if (detailName.startsWith(ApiConstants.ACS_PROPERTY)) {
+                        OVFPropertyTO propertyTO = templateDetailsDao.findPropertyByTemplateAndKey(vmInstance.getTemplateId(),detailName);
+                        if (propertyTO != null && propertyTO.isPassword()) {
                             details.put(detailName, DBEncryptionUtil.encrypt(details.get(detailName)));
                         }
                     }
@@ -3946,27 +3950,11 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
                 }
                 vm.setDetail(VmDetailConstants.DEPLOY_VM, "true");
 
-                if (MapUtils.isNotEmpty(userVmOVFPropertiesMap)) {
-                    for (String key : userVmOVFPropertiesMap.keySet()) {
-                        String detailKey = ApiConstants.OVF_PROPERTIES + "-" + key;
-                        String value = userVmOVFPropertiesMap.get(key);
+                copyDiskDetailsToVm(vm, template);
 
-                        // Sanitize boolean values to expected format and encrypt passwords
-                        if (StringUtils.isNotBlank(value)) {
-                            if (value.equalsIgnoreCase("True")) {
-                                value = "True";
-                            } else if (value.equalsIgnoreCase("False")) {
-                                value = "False";
-                            } else {
-                                TemplateOVFPropertyVO ovfPropertyVO = templateOVFPropertiesDao.findByTemplateAndKey(vm.getTemplateId(), key);
-                                if (ovfPropertyVO.isPassword()) {
-                                    value = DBEncryptionUtil.encrypt(value);
-                                }
-                            }
-                        }
-                        vm.setDetail(detailKey, value);
-                    }
-                }
+                setPropertiesOnVM(vm, userVmOVFPropertiesMap);
+
+                copyNetworkRequirementsToVm(vm, template);
 
                 _vmDao.saveDetails(vm);
                 if (!isImport) {
@@ -4009,6 +3997,56 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
                 return vm;
             }
         });
+    }
+
+    private void copyNetworkRequirementsToVm(UserVmVO vm, VirtualMachineTemplate template) {
+        if (template.isDeployAsIs()) { // FR37 should be always when we are done
+            List<VMTemplateDetailVO> details = templateDetailsDao.listDetailsByTemplateId(template.getId(), ImageStore.REQUIRED_NETWORK_PREFIX);
+            for (VMTemplateDetailVO detail : details) {
+                vm.setDetail(detail.getName(), detail.getValue());
+            }
+        }
+    }
+
+    private void copyDiskDetailsToVm(UserVmVO vm, VirtualMachineTemplate template) {
+        if (template.isDeployAsIs()) { // FR37 should be always when we are done
+            List<VMTemplateDetailVO> details = templateDetailsDao.listDetailsByTemplateId(template.getId(), ImageStore.DISK_DEFINITION_PREFIX);
+            for (VMTemplateDetailVO detail : details) {
+                vm.setDetail(detail.getName(), detail.getValue());
+            }
+        }
+    }
+
+    /**
+     * take the properties and set them on the vm.
+     * consider should we be complete, and make sure all default values are copied as well if known?
+     * I.E. iterate over the template details as well to copy any that are not defined yet.
+     */
+    private void setPropertiesOnVM(UserVmVO vm, Map<String, String> userVmOVFPropertiesMap) {
+        if (MapUtils.isNotEmpty(userVmOVFPropertiesMap)) {
+            for (String key : userVmOVFPropertiesMap.keySet()) {
+                String detailKey = ApiConstants.ACS_PROPERTY + "-" + key;
+                String value = userVmOVFPropertiesMap.get(key);
+
+                // Sanitize boolean values to expected format and encrypt passwords
+                if (StringUtils.isNotBlank(value)) {
+                    if (value.equalsIgnoreCase("True")) {
+                        value = "True";
+                    } else if (value.equalsIgnoreCase("False")) {
+                        value = "False";
+                    } else {
+                        OVFPropertyTO propertyTO = templateDetailsDao.findPropertyByTemplateAndKey(vm.getTemplateId(), key);
+                        if (propertyTO != null && propertyTO.isPassword()) {
+                            value = DBEncryptionUtil.encrypt(value);
+                        }
+                    }
+                }
+                if (s_logger.isTraceEnabled()) {
+                    s_logger.trace(String.format("setting property '%s' as '%s' with value '%s'", key, detailKey, value));
+                }
+                vm.setDetail(detailKey, value);
+            }
+        }
     }
 
     private UserVmVO commitUserVm(final DataCenter zone, final VirtualMachineTemplate template, final String hostName, final String displayName, final Account owner,
@@ -5143,7 +5181,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
         Boolean displayVm = cmd.isDisplayVm();
         String keyboard = cmd.getKeyboard();
         Map<Long, DiskOffering> dataDiskTemplateToDiskOfferingMap = cmd.getDataDiskTemplateToDiskOfferingMap();
-        Map<String, String> userVmOVFProperties = cmd.getVmOVFProperties();
+        Map<String, String> userVmOVFProperties = cmd.getVmProperties();
         if (zone.getNetworkType() == NetworkType.Basic) {
             if (cmd.getNetworkIds() != null) {
                 throw new InvalidParameterValueException("Can't specify network Ids in Basic zone");

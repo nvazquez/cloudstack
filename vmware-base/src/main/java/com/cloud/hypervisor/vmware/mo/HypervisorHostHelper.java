@@ -37,6 +37,17 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import com.vmware.vim25.ConcurrentAccessFaultMsg;
+import com.vmware.vim25.DuplicateNameFaultMsg;
+import com.vmware.vim25.FileFaultFaultMsg;
+import com.vmware.vim25.InsufficientResourcesFaultFaultMsg;
+import com.vmware.vim25.InvalidDatastoreFaultMsg;
+import com.vmware.vim25.InvalidNameFaultMsg;
+import com.vmware.vim25.InvalidStateFaultMsg;
+import com.vmware.vim25.OutOfBoundsFaultMsg;
+import com.vmware.vim25.RuntimeFaultFaultMsg;
+import com.vmware.vim25.TaskInProgressFaultMsg;
+import com.vmware.vim25.VmConfigFaultFaultMsg;
 import org.apache.cloudstack.engine.orchestration.service.NetworkOrchestrationService;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
@@ -1704,6 +1715,11 @@ public class HypervisorHostHelper {
         return url;
     }
 
+    /**
+     * removes the NetworkSection element from the {ovfString} if it is an ovf xml file
+     * @param ovfString input string
+     * @return like the input string but if xml elements by name {NetworkSection} removed
+     */
     public static String removeOVFNetwork(final String ovfString)  {
         if (ovfString == null || ovfString.isEmpty()) {
             return ovfString;
@@ -1738,8 +1754,13 @@ public class HypervisorHostHelper {
         return ovfString;
     }
 
+    /**
+     * deploys a new VM from a ovf spec. It ignores network, defaults locale to 'US'
+     * @param stripNetworks   true if we are not deploying an AVO as is
+     * @throws Exception shoud be a VmwareResourceException
+     */
     public static void importVmFromOVF(VmwareHypervisorHost host, String ovfFilePath, String vmName, DatastoreMO dsMo, String diskOption, ManagedObjectReference morRp,
-            ManagedObjectReference morHost) throws Exception {
+                                       ManagedObjectReference morHost, boolean stripNetworks) throws CloudRuntimeException, IOException {
 
         assert (morRp != null);
 
@@ -1752,19 +1773,28 @@ public class HypervisorHostHelper {
 
         String ovfDescriptor = removeOVFNetwork(HttpNfcLeaseMO.readOvfContent(ovfFilePath));
         VmwareContext context = host.getContext();
-        OvfCreateImportSpecResult ovfImportResult =
-                context.getService().createImportSpec(context.getServiceContent().getOvfManager(), ovfDescriptor, morRp, dsMo.getMor(), importSpecParams);
-
+        OvfCreateImportSpecResult ovfImportResult = null;
+        try {
+            ovfImportResult = context.getService().createImportSpec(context.getServiceContent().getOvfManager(), ovfDescriptor, morRp, dsMo.getMor(), importSpecParams);
+        } catch (ConcurrentAccessFaultMsg
+                | FileFaultFaultMsg
+                | InvalidDatastoreFaultMsg
+                | InvalidStateFaultMsg
+                | RuntimeFaultFaultMsg
+                | TaskInProgressFaultMsg
+                | VmConfigFaultFaultMsg error) {
+            throw new CloudRuntimeException("ImportSpec creation failed", error);
+        }
         if (ovfImportResult == null) {
             String msg = "createImportSpec() failed. ovfFilePath: " + ovfFilePath + ", vmName: " + vmName + ", diskOption: " + diskOption;
             s_logger.error(msg);
-            throw new Exception(msg);
+            throw new CloudRuntimeException(msg);
         }
         if(!ovfImportResult.getError().isEmpty()) {
             for (LocalizedMethodFault fault : ovfImportResult.getError()) {
                 s_logger.error("createImportSpec error: " + fault.getLocalizedMessage());
             }
-            throw new CloudException("Failed to create an import spec from " + ovfFilePath + ". Check log for details.");
+            throw new CloudRuntimeException("Failed to create an import spec from " + ovfFilePath + ". Check log for details.");
         }
 
         if (!ovfImportResult.getWarning().isEmpty()) {
@@ -1773,22 +1803,55 @@ public class HypervisorHostHelper {
             }
         }
 
-        DatacenterMO dcMo = new DatacenterMO(context, host.getHyperHostDatacenter());
-        ManagedObjectReference morLease = context.getService().importVApp(morRp, ovfImportResult.getImportSpec(), dcMo.getVmFolder(), morHost);
+        DatacenterMO dcMo = null;
+        try {
+            dcMo = new DatacenterMO(context, host.getHyperHostDatacenter());
+        } catch (Exception e) {
+            throw new CloudRuntimeException(String.format("no datacenter for host '%s' available in context", context.getServerAddress()), e);
+        }
+        ManagedObjectReference folderMO = null;
+        try {
+            folderMO = dcMo.getVmFolder();
+        } catch (Exception e) {
+            throw new CloudRuntimeException("no management handle for VmFolder", e);
+        }
+        ManagedObjectReference morLease = null;
+        try {
+            morLease = context.getService().importVApp(morRp, ovfImportResult.getImportSpec(), folderMO, morHost);
+        } catch (DuplicateNameFaultMsg
+                | FileFaultFaultMsg
+                | InsufficientResourcesFaultFaultMsg
+                | InvalidDatastoreFaultMsg
+                | InvalidNameFaultMsg
+                | OutOfBoundsFaultMsg
+                | RuntimeFaultFaultMsg
+                | VmConfigFaultFaultMsg fault) {
+            throw new CloudRuntimeException("import vApp failed",fault);
+        }
         if (morLease == null) {
             String msg = "importVApp() failed. ovfFilePath: " + ovfFilePath + ", vmName: " + vmName + ", diskOption: " + diskOption;
             s_logger.error(msg);
-            throw new Exception(msg);
+            throw new CloudRuntimeException(msg);
         }
         boolean importSuccess = true;
         final HttpNfcLeaseMO leaseMo = new HttpNfcLeaseMO(context, morLease);
-        HttpNfcLeaseState state = leaseMo.waitState(new HttpNfcLeaseState[] {HttpNfcLeaseState.READY, HttpNfcLeaseState.ERROR});
+        HttpNfcLeaseState state = null;
+        try {
+            state = leaseMo.waitState(new HttpNfcLeaseState[] {HttpNfcLeaseState.READY, HttpNfcLeaseState.ERROR});
+        } catch (Exception e) {
+            throw new CloudRuntimeException("exception while waiting for leaseMO", e);
+        }
         try {
             if (state == HttpNfcLeaseState.READY) {
                 final long totalBytes = HttpNfcLeaseMO.calcTotalBytes(ovfImportResult);
                 File ovfFile = new File(ovfFilePath);
 
-                HttpNfcLeaseInfo httpNfcLeaseInfo = leaseMo.getLeaseInfo();
+                HttpNfcLeaseInfo httpNfcLeaseInfo = null;
+                try {
+                    httpNfcLeaseInfo = leaseMo.getLeaseInfo();
+                } catch (Exception e) {
+                    throw new CloudRuntimeException("error waiting for lease info", e);
+                }
                 List<HttpNfcLeaseDeviceUrl> deviceUrls = httpNfcLeaseInfo.getDeviceUrl();
                 long bytesAlreadyWritten = 0;
 
@@ -1818,31 +1881,44 @@ public class HypervisorHostHelper {
                     String erroMsg = "File upload task failed to complete due to: " + e.getMessage();
                     s_logger.error(erroMsg);
                     importSuccess = false; // Set flag to cleanup the stale template left due to failed import operation, if any
-                    throw new Exception(erroMsg, e);
+                    throw new CloudRuntimeException(erroMsg, e);
                 } catch (Throwable th) {
                     String errorMsg = "throwable caught during file upload task: " + th.getMessage();
                     s_logger.error(errorMsg);
                     importSuccess = false; // Set flag to cleanup the stale template left due to failed import operation, if any
-                    throw new Exception(errorMsg, th);
+                    throw new CloudRuntimeException(errorMsg, th);
                 } finally {
                     progressReporter.close();
                 }
                 if (bytesAlreadyWritten == totalBytes) {
-                    leaseMo.updateLeaseProgress(100);
+                    try {
+                        leaseMo.updateLeaseProgress(100);
+                    } catch (Exception e) {
+                        throw new CloudRuntimeException("error while waiting for lease update", e);
+                    }
                 }
             } else if (state == HttpNfcLeaseState.ERROR) {
-                LocalizedMethodFault error = leaseMo.getLeaseError();
+                LocalizedMethodFault error = null;
+                try {
+                    error = leaseMo.getLeaseError();
+                } catch (Exception e) {
+                    throw new CloudRuntimeException("error getting lease error", e);
+                }
                 MethodFault fault = error.getFault();
                 String erroMsg = "Object creation on vCenter failed due to: Exception: " + fault.getClass().getName() + ", message: " + error.getLocalizedMessage();
                 s_logger.error(erroMsg);
-                throw new Exception(erroMsg);
+                throw new CloudRuntimeException(erroMsg);
             }
         } finally {
-            if (!importSuccess) {
-                s_logger.error("Aborting the lease on " + vmName + " after import operation failed.");
-                leaseMo.abortLease();
-            } else {
-                leaseMo.completeLease();
+            try {
+                if (!importSuccess) {
+                    s_logger.error("Aborting the lease on " + vmName + " after import operation failed.");
+                    leaseMo.abortLease();
+                } else {
+                    leaseMo.completeLease();
+                }
+            } catch (Exception e) {
+                throw new CloudRuntimeException("error completing lease", e);
             }
         }
     }
