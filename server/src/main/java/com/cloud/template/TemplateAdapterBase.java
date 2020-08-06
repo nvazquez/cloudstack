@@ -285,7 +285,7 @@ public abstract class TemplateAdapterBase extends AdapterBase implements Templat
         }
 
         // for OVA, deploy as is will be default and only root can override
-        boolean deployAsIs = true;
+        boolean deployAsIs = false;
         if (cmd instanceof RegisterTemplateCmdByAdmin) {
             deployAsIs = ((RegisterTemplateCmdByAdmin)cmd).isDeployAsIs();
         }
