@@ -1782,7 +1782,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
 
             DiskTO[] specDisks = vmSpec.getDisks();
             boolean installAsIs = StringUtils.isNotEmpty(vmSpec.getTemplateLocation());
-            if (installAsIs) {
+            if (installAsIs && dcMo.findVm(vmInternalCSName) == null) {
                 if (s_logger.isTraceEnabled()) {
                     s_logger.trace(String.format("deploying OVA from %s as is", vmSpec.getTemplateLocation()));
                 }
