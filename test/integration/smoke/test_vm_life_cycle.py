@@ -47,7 +47,8 @@ from marvin.lib.common import (get_domain,
                                get_template,
                                get_test_ovf_templates,
                                list_hosts,
-                               list_virtual_machines)
+                               list_virtual_machines,
+                               get_vm_vapp_configs)
 from marvin.codes import FAILED, PASS
 from nose.plugins.attrib import attr
 from marvin.lib.decoratorGenerators import skipTestIf
@@ -1688,8 +1689,10 @@ class TestVAppsVM(cloudstackTestCase):
         cls.templates = get_test_ovf_templates(
             cls.apiclient,
             cls.zone.id,
+            cls.services['test_ovf_templates'],
+            cls.hypervisor
         )
-        if len(cls.template) == 0:
+        if len(cls.templates) == 0:
             assert False, "get_test_ovf_templates() failed to return templates"
 
         cls.hypervisorNotSupported = cls.hypervisor.lower() != "vmware"
@@ -1704,12 +1707,30 @@ class TestVAppsVM(cloudstackTestCase):
             cls.account
         ]
 
+        # Uncomment when tests are finished, to cleanup the test templates
+        """
+        for template in cls.templates:
+            cls._cleanup.append(template)
+        """
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            cleanup_resources(cls.apiclient, cls._cleanup)
+        except Exception as e:
+            raise Exception("Warning: Exception during class cleanup : %s" % e)
+
     def setUp(self):
         self.apiclient = self.testClient.getApiClient()
-
         self.cleanup = []
 
-    @attr(tags=["advanced", "advancedns", "smoke", "sg"], required_hardware="false")
+    def tearDown(self):
+        try:
+            cleanup_resources(self.apiclient, self.cleanup)
+        except Exception as e:
+            raise Exception("Warning: Exception during cleanup : %s" % e)
+
+    @attr(tags=["advanced", "advancedns", "smoke", "sg", "dev"], required_hardware="false")
     @skipTestIf("hypervisorNotSupported")
     def test_01_vapps_vm_cycle(self):
         """
@@ -1722,3 +1743,5 @@ class TestVAppsVM(cloudstackTestCase):
         """
 
         # 1 - Deploy VM
+        vapps = get_vm_vapp_configs(self.apiclient, self.config, self.zone, "machina-2dd-iso")
+        print(vapps)

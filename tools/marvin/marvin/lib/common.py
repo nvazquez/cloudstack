@@ -395,7 +395,7 @@ def get_test_template(apiclient, zone_id=None, hypervisor=None, test_templates=N
     return FAILED
 
 
-def get_test_ovf_templates(apiclient, zone_id=None, test_ovf_templates=None):
+def get_test_ovf_templates(apiclient, zone_id=None, test_ovf_templates=None, hypervisor=None):
     """
     @Name : get_test_ovf_templates
     @Desc : Retrieves the list of test ovf templates used to running tests. When the template
@@ -428,13 +428,29 @@ def get_test_ovf_templates(apiclient, zone_id=None, test_ovf_templates=None):
         if validateList(templates)[0] != PASS:
             template = Template.register(apiclient, test_template, zoneid=zone_id, hypervisor=hypervisor.lower(), randomize_name=False)
             template.download(apiclient)
-            return template
+            result.append(template)
 
-        for template in templates:
-            if template.isready and template.ispublic:
-                result.append(template)
+        if templates:
+            for template in templates:
+                if template.isready and template.ispublic:
+                    result.append(template)
 
     return result
+
+def get_vm_vapp_configs(apiclient, config, setup_zone, vm_name):
+    zoneDetailsInConfig = [zone for zone in config.zones
+                           if zone.name == setup_zone.name][0]
+    vcenterusername = zoneDetailsInConfig.vmwaredc.username
+    vcenterpassword = zoneDetailsInConfig.vmwaredc.password
+    vcenterip = zoneDetailsInConfig.vmwaredc.vcenter
+    vcenterObj = Vcenter(
+        vcenterip,
+        vcenterusername,
+        vcenterpassword)
+
+    vms = vcenterObj.get_vms(vm_name)
+    if vms:
+        return vms[0]['vm']['properties']
 
 
 def get_windows_template(

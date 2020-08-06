@@ -994,7 +994,8 @@ test_data = {
             "format": "ova",
             "hypervisor": "vmware",
             "ostype": "Other Linux (64-bit)",
-            "url": "http://download.cloudstack.org/templates/ovf/test-vmware.ova",
+            "url": "http://172.17.0.1/machina-2dd-iso.ova",
+            "deployasis": "True",
             "requireshvm": "True",
             "ispublic": "True"
         }
