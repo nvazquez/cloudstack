@@ -1743,5 +1743,41 @@ class TestVAppsVM(cloudstackTestCase):
         """
 
         # 1 - Deploy VM
-        vapps = get_vm_vapp_configs(self.apiclient, self.config, self.zone, "machina-2dd-iso")
-        print(vapps)
+        templates_data = self.services["test_ovf_template"]
+        for test_template in test_ovf_templates:
+            properties = None
+            networks = None
+            for template_data in templates_data:
+                if template_data['name'] == test_template.name:
+                    properties = template_data["properties"]
+                    networks = template_data["networks"]
+                    break
+            if properties == None or networks == None:
+                continue
+            nicnetworklist = None
+            for network in networks:
+                # deploy networks and sort mapping
+
+            # Create a fixed or custom offering based on value in template_data config
+
+            # Deploy vm
+            self.virtual_machine = VirtualMachine.create(
+                self.apiclient,
+                self.services["virtual_machine"],
+                templateid=self.template.id,
+                serviceofferingid=test_template.id,
+                zoneid=self.zone.id,
+                properties=properties,
+                nicnetworklist=nicnetworklist
+            )
+
+            vapps = get_vm_vapp_configs(self.apiclient, self.config, self.zone, self.virtual_machine.name)
+            print(vapps)
+
+            # Verify other vm configs. Fail test if mismatch, add vm, networks for cleanup
+
+            cmd = destroyVirtualMachine.destroyVirtualMachineCmd()
+            cmd.id = self.virtual_machine.id
+            self.apiclient.destroyVirtualMachine(cmd)
+
+            #destroy network

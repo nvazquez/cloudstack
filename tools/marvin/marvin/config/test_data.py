@@ -997,7 +997,35 @@ test_data = {
             "url": "http://172.17.0.1/machina-2dd-iso.ova",
             "deployasis": "True",
             "requireshvm": "True",
-            "ispublic": "True"
+            "ispublic": "True",
+            "properties": [
+                {
+                    "key": "useful.property",
+                    "value": true
+                },
+                {
+                    "key": "use.type",
+                    "value": "production"
+                },
+                {
+                    "key": "used.by.admin",
+                    "value": "root"
+                }
+            ],
+            "networks": [
+                {
+                    "type": "Isolated",
+                    "instances": [15, 18]
+                },
+                {
+                    "type": "L2",
+                    "instances": [16]
+                }
+                {
+                    "type": "Isolated",
+                    "instances": [17]
+                }
+            ]
         }
     ],
 
