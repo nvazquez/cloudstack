@@ -53,6 +53,7 @@ import com.cloud.vm.VirtualMachineProfile;
 import com.cloud.vm.VmDetailConstants;
 import com.cloud.vm.dao.DomainRouterDao;
 import com.cloud.vm.dao.NicDao;
+import com.google.gson.Gson;
 import org.apache.cloudstack.api.ApiConstants;
 import org.apache.cloudstack.storage.datastore.db.PrimaryDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
@@ -386,7 +387,6 @@ class VmwareVmImplementer {
         return rootDiskTO;
     }
 
-    // TODO FR37 phase out ovf properties in favor of template details; propertyTO remains
     private List<OVFPropertyTO> getOvfPropertyList(VirtualMachineProfile vm, Map<String, String> details) {
         List<OVFPropertyTO> ovfProperties = new ArrayList<OVFPropertyTO>();
         for (String detailKey : details.keySet()) {
@@ -397,14 +397,19 @@ class VmwareVmImplementer {
                     LOGGER.warn(String.format("OVF property %s not found on template, discarding", vmPropertyKey));
                     continue;
                 }
-                // FR37 the key is without acs prefix (in the TO)
                 propertyTO.setKey(vmPropertyKey);
-                // FR37 if the UI send the whole json we should just copy it otherwise take the json from the template and set the value on it
-                propertyTO.setValue(details.get(detailKey));
+                String propertyValue = extractValueFromDetailJson(details.get(detailKey));
+                propertyTO.setValue(propertyValue);
                 ovfProperties.add(propertyTO);
             }
         }
         return ovfProperties;
+    }
+
+    private String extractValueFromDetailJson(String jsonString) {
+        Gson gson = new Gson();
+        final OVFPropertyTO propDetail = gson.fromJson(jsonString, OVFPropertyTO.class);
+        return propDetail.getValue();
     }
 
     private void addReservationDetails(long clusterId, Map<String, String> details) {
