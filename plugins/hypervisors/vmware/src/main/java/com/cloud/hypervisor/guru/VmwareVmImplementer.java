@@ -53,7 +53,6 @@ import com.cloud.vm.VirtualMachineProfile;
 import com.cloud.vm.VmDetailConstants;
 import com.cloud.vm.dao.DomainRouterDao;
 import com.cloud.vm.dao.NicDao;
-import com.google.gson.Gson;
 import org.apache.cloudstack.api.ApiConstants;
 import org.apache.cloudstack.storage.datastore.db.PrimaryDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
@@ -398,18 +397,11 @@ class VmwareVmImplementer {
                     continue;
                 }
                 propertyTO.setKey(vmPropertyKey);
-                String propertyValue = extractValueFromDetailJson(details.get(detailKey));
-                propertyTO.setValue(propertyValue);
+                propertyTO.setValue(details.get(detailKey));
                 ovfProperties.add(propertyTO);
             }
         }
         return ovfProperties;
-    }
-
-    private String extractValueFromDetailJson(String jsonString) {
-        Gson gson = new Gson();
-        final OVFPropertyTO propDetail = gson.fromJson(jsonString, OVFPropertyTO.class);
-        return propDetail.getValue();
     }
 
     private void addReservationDetails(long clusterId, Map<String, String> details) {
