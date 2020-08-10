@@ -1024,7 +1024,7 @@ test_data = {
             {
                 "network": "l2",
                 "nic": [16]
-            }
+            },
             {
                 "network": "isolated",
                 "nic": [17]
