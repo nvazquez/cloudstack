@@ -1015,6 +1015,20 @@ test_data = {
                 "key": "usefull.property",
                 "value": "True"
             }
+        ],
+        "nicnetworklist": [
+            {
+                "network": "isolated",
+                "nic": [15, 18]
+            },
+            {
+                "network": "l2",
+                "instances": [16]
+            }
+            {
+                "network": "isolated",
+                "instances": [17]
+            }
         ]
     },
     "custom_service_offering": {

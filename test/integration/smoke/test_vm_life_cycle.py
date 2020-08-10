@@ -55,6 +55,7 @@ from marvin.lib.decoratorGenerators import skipTestIf
 # Import System modules
 import time
 import json
+import operator
 
 _multiprocess_shared_ = True
 
@@ -1687,38 +1688,54 @@ class TestVAppsVM(cloudstackTestCase):
         cls.zone = get_zone(cls.apiclient, cls.testClient.getZoneForTests())
         cls.services['mode'] = cls.zone.networktype
 
-        cls.templates = get_test_ovf_templates(
-            cls.apiclient,
-            cls.zone.id,
-            cls.services['test_ovf_templates'],
-            cls.hypervisor
-        )
-        if len(cls.templates) == 0:
-            assert False, "get_test_ovf_templates() failed to return templates"
-
         cls.hypervisorNotSupported = cls.hypervisor.lower() != "vmware"
 
-        cls.account = Account.create(
-            cls.apiclient,
-            cls.services["account"],
-            domainid=cls.domain.id
-        )
+        if cls.hypervisorNotSupported == False:
 
-        cls.custom_offering = ServiceOffering.create(
-            cls.apiclient,
-            cls.services["custom_service_offering"]
-        )
+            cls.account = Account.create(
+                cls.apiclient,
+                cls.services["account"],
+                domainid=cls.domain.id
+            )
 
-        cls._cleanup = [
-            cls.account,
-            cls.custom_offering
-        ]
+            cls.templates = get_test_ovf_templates(
+                cls.apiclient,
+                cls.zone.id,
+                cls.services['test_ovf_templates'],
+                cls.hypervisor
+            )
+            if len(cls.templates) == 0:
+                assert False, "get_test_ovf_templates() failed to return templates"
 
-        # Uncomment when tests are finished, to cleanup the test templates
-        """
-        for template in cls.templates:
-            cls._cleanup.append(template)
-        """
+            cls.custom_offering = ServiceOffering.create(
+                cls.apiclient,
+                cls.services["custom_service_offering"]
+            )
+
+            cls.isolated_network_offering = NetworkOffering.create(
+                cls.apiclient,
+                cls.services["isolated_network_offering"],
+            )
+            cls.isolated_network_offering.update(cls.apiclient, state='Enabled')
+
+            cls.l2_network_offering = NetworkOffering.create(
+                cls.apiclient,
+                cls.services["l2-network_offering"],
+            )
+            cls.l2_network_offering.update(cls.apiclient, state='Enabled')
+
+            cls._cleanup = [
+                cls.account,
+                cls.custom_offering,
+                cls.isolated_network_offering,
+                cls.l2_network_offering
+            ]
+
+            # Uncomment when tests are finished, to cleanup the test templates
+            """
+            for template in cls.templates:
+                cls._cleanup.append(template)
+            """
 
     @classmethod
     def tearDownClass(cls):
@@ -1782,6 +1799,27 @@ class TestVAppsVM(cloudstackTestCase):
                     elif item['resourceType'] == 'Processor':
                         cpu_number = item['virtualQuantity']
 
+            nicnetworklist = []
+            networks = []
+            network_mappings = self.services["virtual_machine_vapps"]["nicnetworklist"]
+            for network_mapping in network_mappings:
+                network_service = self.services["isolated_network"]
+                network_offering_id = self.isolated_network_offering.id
+                if network_mapping["network"] == 'l2':
+                    network_service = self.services["l2-network"]
+                    network_offering_id = self.l2_network_offering.id
+                network = Network.create(
+                    self.apiclient,
+                    network_service,
+                    networkofferingid=network_offering_id,
+                    accountid=self.account.name,
+                    domainid=self.account.domainid,
+                    zoneid=self.zone.id)
+                networks.append(network)
+                for interfaces in network_mapping["nic"]:
+                    nicnetworklist.append({"nic": interface, "network": network.id})
+            self.services["virtual_machine_vapps"]["nicnetworklist"] = nicnetworklist
+
             vm = VirtualMachine.create(
                 self.apiclient,
                 self.services["virtual_machine_vapps"],
@@ -1791,8 +1829,78 @@ class TestVAppsVM(cloudstackTestCase):
                 customcpunumber=cpu_number,
                 customcpuspeed=cpu_speed,
                 custommemory=memory,
-                properties=self.services['virtual_machine_vapps']['properties']
+                properties=self.services['virtual_machine_vapps']['properties'],
+                nicnetworklist=self.services['virtual_machine_vapps']['nicnetworklist']
             )
 
-            # Verify VM is running and retrieve its VM properties and compare against template props
-            # Missing: passing nicmap on VM deployment
+            list_vm_response = VirtualMachine.list(
+                self.apiclient,
+                id=vm.id
+            )
+            self.debug(
+                "Verify listVirtualMachines response for virtual machine: %s" \
+                % vm.id
+            )
+            self.assertEqual(
+                isinstance(list_vm_response, list),
+                True,
+                "Check list response returns a valid list"
+            )
+            self.assertNotEqual(
+                len(list_vm_response),
+                0,
+                "Check VM available in List Virtual Machines"
+            )
+            vm_response = list_vm_response[0]
+            self.assertEqual(
+                vm_response.id,
+                vm.id,
+                "Check virtual machine id in listVirtualMachines"
+            )
+            self.assertEqual(
+                vm_response.name,
+                vm.name,
+                "Check virtual machine name in listVirtualMachines"
+            )
+            self.assertEqual(
+                vm_response.state,
+                'Running',
+                msg="VM is not in Running state"
+            )
+
+            nicnetworklist.sort(key=operator.itemgetter('nic'))
+            vm_nics = vm.nics
+            self.assertEqual(
+                len(nicnetworklist),
+                len(nics),
+                msg="VM NIC count is different, expected = {}, result = {}".format(len(nicnetworklist), len(nics))
+            )
+            for i in range(len(vm_nics)):
+                nic = vm_nics[i]
+                nic_network = nicnetworklist[i]
+                self.assertEqual(
+                    nic.networkid,
+                    nic_network["network"],
+                    msg="VM NIC(InstanceID: {}) network mismatch, expected = {}, result = {}".format(nic_network["network"], nic.networkid)
+                )
+
+            original_properties = self.services['virtual_machine_vapps']['properties']
+            vm_properties = get_vm_vapp_configs(self.apiclient, self.config, self.zone, vm.name)
+            self.assertEqual(
+                isinstance(vm_properties, list),
+                True,
+                "Check VM properties list response from vcenter returns a valid list"
+            )
+            for property in vm_properties:
+                self.assertEqual(
+                    property["value"],
+                    original_properties[property["key"]]["value"],
+                    "Check VM property %s with original value" % property["key"]
+                )
+
+            cmd = destroyVirtualMachine.destroyVirtualMachineCmd()
+            cmd.id = vm.id
+            self.apiclient.destroyVirtualMachine(cmd)
+
+            for network in networks:
+                network.delete(self.api_client)
