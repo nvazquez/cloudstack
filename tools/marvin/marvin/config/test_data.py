@@ -1018,7 +1018,7 @@ test_data = {
         ],
         "nicnetworklist": [
             {
-                "network": "isolated",
+                "network": "l2",
                 "nic": [15, 18]
             },
             {
@@ -1026,7 +1026,7 @@ test_data = {
                 "nic": [16]
             },
             {
-                "network": "isolated",
+                "network": "l2",
                 "nic": [17]
             }
         ]

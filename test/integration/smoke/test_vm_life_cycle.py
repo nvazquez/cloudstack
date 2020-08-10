@@ -55,7 +55,7 @@ from marvin.lib.decoratorGenerators import skipTestIf
 # Import System modules
 import time
 import json
-import operator
+from operator import itemgetter
 
 _multiprocess_shared_ = True
 
@@ -1789,7 +1789,6 @@ class TestVAppsVM(cloudstackTestCase):
             if configurations:
                 conf = json.loads(configurations[0])
                 items = conf['hardwareItems']
-                index = 0
                 cpu_speed = 1000
                 cpu_number = 0
                 memory = 0
@@ -1816,13 +1815,14 @@ class TestVAppsVM(cloudstackTestCase):
                     domainid=self.account.domainid,
                     zoneid=self.zone.id)
                 networks.append(network)
-                for interfaces in network_mapping["nic"]:
+                for interface in network_mapping["nic"]:
                     nicnetworklist.append({"nic": interface, "network": network.id})
-            self.services["virtual_machine_vapps"]["nicnetworklist"] = nicnetworklist
 
             vm = VirtualMachine.create(
                 self.apiclient,
                 self.services["virtual_machine_vapps"],
+                accountid=self.account.name,
+                domainid=self.account.domainid,
                 templateid=template.id,
                 serviceofferingid=self.custom_offering.id,
                 zoneid=self.zone.id,
@@ -1830,7 +1830,7 @@ class TestVAppsVM(cloudstackTestCase):
                 customcpuspeed=cpu_speed,
                 custommemory=memory,
                 properties=self.services['virtual_machine_vapps']['properties'],
-                nicnetworklist=self.services['virtual_machine_vapps']['nicnetworklist']
+                nicnetworklist=nicnetworklist
             )
 
             list_vm_response = VirtualMachine.list(
@@ -1868,39 +1868,34 @@ class TestVAppsVM(cloudstackTestCase):
                 msg="VM is not in Running state"
             )
 
-            nicnetworklist.sort(key=operator.itemgetter('nic'))
-            vm_nics = vm.nics
+            vm_nics = vm.nic
             self.assertEqual(
                 len(nicnetworklist),
-                len(nics),
-                msg="VM NIC count is different, expected = {}, result = {}".format(len(nicnetworklist), len(nics))
+                len(vm_nics),
+                msg="VM NIC count is different, expected = {}, result = {}".format(len(nicnetworklist), len(vm_nics))
             )
+
+            nicnetworklist.sort(key=itemgetter('network'))
+            vm_nics.sort(key=itemgetter('networkid'))
             for i in range(len(vm_nics)):
                 nic = vm_nics[i]
                 nic_network = nicnetworklist[i]
                 self.assertEqual(
                     nic.networkid,
                     nic_network["network"],
-                    msg="VM NIC(InstanceID: {}) network mismatch, expected = {}, result = {}".format(nic_network["network"], nic.networkid)
+                    msg="VM NIC(InstanceID: {}) network mismatch, expected = {}, result = {}".format(nic_network["nic"], nic_network["network"], nic.networkid)
                 )
 
             original_properties = self.services['virtual_machine_vapps']['properties']
-            vm_properties = get_vm_vapp_configs(self.apiclient, self.config, self.zone, vm.name)
-            self.assertEqual(
-                isinstance(vm_properties, list),
-                True,
-                "Check VM properties list response from vcenter returns a valid list"
-            )
-            for property in vm_properties:
-                self.assertEqual(
-                    property["value"],
-                    original_properties[property["key"]]["value"],
-                    "Check VM property %s with original value" % property["key"]
-                )
+            vm_properties = get_vm_vapp_configs(self.apiclient, self.config, self.zone, vm.instancename)
+            for property in original_properties:
+                if property["key"] in vm_properties:
+                    self.assertEqual(
+                        vm_properties[property["key"]],
+                        property["value"],
+                        "Check VM property %s with original value" % property["key"]
+                    )
 
             cmd = destroyVirtualMachine.destroyVirtualMachineCmd()
             cmd.id = vm.id
             self.apiclient.destroyVirtualMachine(cmd)
-
-            for network in networks:
-                network.delete(self.api_client)
