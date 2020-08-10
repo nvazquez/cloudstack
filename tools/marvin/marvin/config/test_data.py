@@ -1023,11 +1023,11 @@ test_data = {
             },
             {
                 "network": "l2",
-                "instances": [16]
+                "nic": [16]
             }
             {
                 "network": "isolated",
-                "instances": [17]
+                "nic": [17]
             }
         ]
     },
