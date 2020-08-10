@@ -54,6 +54,7 @@ from nose.plugins.attrib import attr
 from marvin.lib.decoratorGenerators import skipTestIf
 # Import System modules
 import time
+import json
 
 _multiprocess_shared_ = True
 
@@ -1703,8 +1704,14 @@ class TestVAppsVM(cloudstackTestCase):
             domainid=cls.domain.id
         )
 
+        cls.custom_offering = ServiceOffering.create(
+            cls.apiclient,
+            cls.services["custom_service_offering"]
+        )
+
         cls._cleanup = [
-            cls.account
+            cls.account,
+            cls.custom_offering
         ]
 
         # Uncomment when tests are finished, to cleanup the test templates
@@ -1730,6 +1737,23 @@ class TestVAppsVM(cloudstackTestCase):
         except Exception as e:
             raise Exception("Warning: Exception during cleanup : %s" % e)
 
+    def get_ova_parsed_information_from_template(self, template):
+        if not template:
+            return None
+        details = template.details.__dict__
+        configurations = []
+        disks = []
+        networks = []
+        for propKey in details:
+            if propKey.startswith('ACS-configuration'):
+                configurations.append(details[propKey])
+            elif propKey.startswith('ACS-disk'):
+                disks.append(details[propKey])
+            elif propKey.startswith('ACS-network'):
+                networks.append(details[propKey])
+
+        return configurations, disks, networks
+
     @attr(tags=["advanced", "advancedns", "smoke", "sg", "dev"], required_hardware="false")
     @skipTestIf("hypervisorNotSupported")
     def test_01_vapps_vm_cycle(self):
@@ -1742,42 +1766,33 @@ class TestVAppsVM(cloudstackTestCase):
         5. Destroy VM
         """
 
-        # 1 - Deploy VM
-        templates_data = self.services["test_ovf_template"]
-        for test_template in test_ovf_templates:
-            properties = None
-            networks = None
-            for template_data in templates_data:
-                if template_data['name'] == test_template.name:
-                    properties = template_data["properties"]
-                    networks = template_data["networks"]
-                    break
-            if properties == None or networks == None:
-                continue
-            nicnetworklist = None
-            for network in networks:
-                # deploy networks and sort mapping
+        for template in self.templates:
+            configurations, disks, network = self.get_ova_parsed_information_from_template(template)
 
-            # Create a fixed or custom offering based on value in template_data config
+            if configurations:
+                conf = json.loads(configurations[0])
+                items = conf['hardwareItems']
+                index = 0
+                cpu_speed = 1000
+                cpu_number = 0
+                memory = 0
+                for item in items:
+                    if item['resourceType'] == 'Memory':
+                        memory = item['virtualQuantity']
+                    elif item['resourceType'] == 'Processor':
+                        cpu_number = item['virtualQuantity']
 
-            # Deploy vm
-            self.virtual_machine = VirtualMachine.create(
+            vm = VirtualMachine.create(
                 self.apiclient,
-                self.services["virtual_machine"],
-                templateid=self.template.id,
-                serviceofferingid=test_template.id,
+                self.services["virtual_machine_vapps"],
+                templateid=template.id,
+                serviceofferingid=self.custom_offering.id,
                 zoneid=self.zone.id,
-                properties=properties,
-                nicnetworklist=nicnetworklist
+                customcpunumber=cpu_number,
+                customcpuspeed=cpu_speed,
+                custommemory=memory,
+                properties=self.services['virtual_machine_vapps']['properties']
             )
 
-            vapps = get_vm_vapp_configs(self.apiclient, self.config, self.zone, self.virtual_machine.name)
-            print(vapps)
-
-            # Verify other vm configs. Fail test if mismatch, add vm, networks for cleanup
-
-            cmd = destroyVirtualMachine.destroyVirtualMachineCmd()
-            cmd.id = self.virtual_machine.id
-            self.apiclient.destroyVirtualMachine(cmd)
-
-            #destroy network
+            # Verify VM is running and retrieve its VM properties and compare against template props
+            # Missing: passing nicmap on VM deployment

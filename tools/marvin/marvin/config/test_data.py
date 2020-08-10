@@ -986,7 +986,6 @@ test_data = {
             "ispublic": "True"
         }
     },
-
     "test_ovf_templates": [
         {
             "name": "ovf-vmware",
@@ -997,38 +996,34 @@ test_data = {
             "url": "http://172.17.0.1/machina-2dd-iso.ova",
             "deployasis": "True",
             "requireshvm": "True",
-            "ispublic": "True",
-            "properties": [
-                {
-                    "key": "useful.property",
-                    "value": true
-                },
-                {
-                    "key": "use.type",
-                    "value": "production"
-                },
-                {
-                    "key": "used.by.admin",
-                    "value": "root"
-                }
-            ],
-            "networks": [
-                {
-                    "type": "Isolated",
-                    "instances": [15, 18]
-                },
-                {
-                    "type": "L2",
-                    "instances": [16]
-                }
-                {
-                    "type": "Isolated",
-                    "instances": [17]
-                }
-            ]
+            "ispublic": "True"
         }
     ],
-
+    "virtual_machine_vapps": {
+        "name": "testvm-vapps",
+        "displayname": "Test VM vApps",
+        "properties": [
+            {
+                "key": "used.by.admin",
+                "value": "marvin"
+            },
+            {
+                "key": "use.type",
+                "value": "test"
+            },
+            {
+                "key": "usefull.property",
+                "value": "True"
+            }
+        ]
+    },
+    "custom_service_offering": {
+        "name": "Custom Service Offering for vApps",
+        "displaytext": "Custom Service Offering for vApps",
+        "cpunumber": "",
+        "cpuspeed": "",
+        "memory": ""
+    },
     "coreos_volume": {
         "diskname": "Volume_core",
         "urlvmware":"http://dl.openvm.eu/cloudstack/coreos/x86_64/coreos_production_cloudstack_image-vmware.ova",
