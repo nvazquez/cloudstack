@@ -988,8 +988,8 @@ test_data = {
     },
     "test_ovf_templates": [
         {
-            "name": "ovf-vmware",
-            "displaytext": "ovf vmware",
+            "name": "test-ovf",
+            "displaytext": "test-ovf",
             "format": "ova",
             "hypervisor": "vmware",
             "ostype": "Other Linux (64-bit)",
@@ -1000,36 +1000,38 @@ test_data = {
         }
     ],
     "virtual_machine_vapps": {
-        "name": "testvm-vapps",
-        "displayname": "Test VM vApps",
-        "properties": [
-            {
-                "key": "used.by.admin",
-                "value": "marvin"
-            },
-            {
-                "key": "use.type",
-                "value": "test"
-            },
-            {
-                "key": "usefull.property",
-                "value": "True"
-            }
-        ],
-        "nicnetworklist": [
-            {
-                "network": "l2",
-                "nic": [15, 18]
-            },
-            {
-                "network": "l2",
-                "nic": [16]
-            },
-            {
-                "network": "l2",
-                "nic": [17]
-            }
-        ]
+        "test-ovf": {
+            "name": "testvm-vapps",
+            "displayname": "Test VM vApps",
+            "properties": [
+                {
+                    "key": "used.by.admin",
+                    "value": "marvin"
+                },
+                {
+                    "key": "use.type",
+                    "value": "test"
+                },
+                {
+                    "key": "usefull.property",
+                    "value": "True"
+                }
+            ],
+            "nicnetworklist": [
+                {
+                    "network": "l2",
+                    "nic": [15, 18]
+                },
+                {
+                    "network": "l2",
+                    "nic": [16]
+                },
+                {
+                    "network": "l2",
+                    "nic": [17]
+                }
+            ]
+        }
     },
     "custom_service_offering": {
         "name": "Custom Service Offering for vApps",

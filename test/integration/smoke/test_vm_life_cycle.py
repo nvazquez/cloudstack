@@ -1778,6 +1778,57 @@ class TestVAppsVM(cloudstackTestCase):
 
         return configurations, disks, isos, networks
 
+    def verify_nics(self, nic_networks, vm_id):
+        cmd = listNics.listNicsCmd()
+        cmd.virtualmachineid = vm_id
+        vm_nics =  self.apiclient.listNics(cmd)
+        self.assertEqual(
+            isinstance(vm_nics, list),
+            True,
+            "Check listNics response returns a valid list"
+        )
+        self.assertEqual(
+            len(nic_networks),
+            len(vm_nics),
+            msg="VM NIC count is different, expected = {}, result = {}".format(len(nic_networks), len(vm_nics))
+        )
+        nic_networks.sort(key=itemgetter('nic')) # CS will create NIC in order of InstanceID. Check network order
+        vm_nics.sort(key=itemgetter('deviceid'))
+        for i in range(len(vm_nics)):
+            nic = vm_nics[i]
+            nic_network = nic_networks[i]
+            self.assertEqual(
+                nic.networkid,
+                nic_network["network"],
+                msg="VM NIC(InstanceID: {}) network mismatch, expected = {}, result = {}".format(nic_network["nic"], nic_network["network"], nic.networkid)
+            )
+
+    def verify_disks(self, template_disks, vm_id):
+        cmd = listVolumes.listVolumesCmd()
+        cmd.virtualmachineid = vm_id
+        cmd.listall = True
+        vm_volumes =  self.apiclient.listVolumes(cmd)
+        self.assertEqual(
+            isinstance(vm_volumes, list),
+            True,
+            "Check listVolumes response returns a valid list"
+        )
+        self.assertEqual(
+            len(template_disks),
+            len(vm_volumes),
+            msg="VM volumes count is different, expected = {}, result = {}".format(len(template_disks), len(vm_volumes))
+        )
+        template_disks.sort(key=itemgetter('diskNumber'))
+        vm_volumes.sort(key=itemgetter('deviceid'))
+        for j in range(len(vm_volumes)):
+            volume = vm_volumes[j]
+            disk = template_disks[j]
+            self.assertEqual(
+                volume.size,
+                disk["virtualSize"],
+                msg="VM Volume(diskNumber: {}) network mismatch, expected = {}, result = {}".format(disk["diskNumber"], disk["virtualSize"], volume.size)
+            )
+
     @attr(tags=["advanced", "advancedns", "smoke", "sg", "dev"], required_hardware="false")
     @skipTestIf("hypervisorNotSupported")
     def test_01_vapps_vm_cycle(self):
@@ -1807,7 +1858,8 @@ class TestVAppsVM(cloudstackTestCase):
 
             nicnetworklist = []
             networks = []
-            network_mappings = self.services["virtual_machine_vapps"]["nicnetworklist"]
+            vm_service = self.services["virtual_machine_vapps"][template.name]
+            network_mappings = vm_service["nicnetworklist"]
             for network_mapping in network_mappings:
                 network_service = self.services["isolated_network"]
                 network_offering_id = self.isolated_network_offering.id
@@ -1827,7 +1879,7 @@ class TestVAppsVM(cloudstackTestCase):
 
             vm = VirtualMachine.create(
                 self.apiclient,
-                self.services["virtual_machine_vapps"],
+                vm_service,
                 accountid=self.account.name,
                 domainid=self.account.domainid,
                 templateid=template.id,
@@ -1836,7 +1888,7 @@ class TestVAppsVM(cloudstackTestCase):
                 customcpunumber=cpu_number,
                 customcpuspeed=cpu_speed,
                 custommemory=memory,
-                properties=self.services['virtual_machine_vapps']['properties'],
+                properties=vm_service['properties'],
                 nicnetworklist=nicnetworklist
             )
 
@@ -1875,57 +1927,12 @@ class TestVAppsVM(cloudstackTestCase):
                 msg="VM is not in Running state"
             )
 
-            # Verify NICs
-            cmd = listNics.listNicsCmd()
-            cmd.virtualmachineid = vm.id
-            vm_nics =  self.apiclient.listNics(cmd)
-            self.assertEqual(
-                isinstance(vm_nics, list),
-                True,
-                "Check listNics response returns a valid list"
-            )
-            self.assertEqual(
-                len(nicnetworklist),
-                len(vm_nics),
-                msg="VM NIC count is different, expected = {}, result = {}".format(len(nicnetworklist), len(vm_nics))
-            )
-            nicnetworklist.sort(key=itemgetter('nic')) # CS will create NIC in order of InstanceID. Check network order
-            vm_nics.sort(key=itemgetter('deviceid'))
-            for i in range(len(vm_nics)):
-                nic = vm_nics[i]
-                nic_network = nicnetworklist[i]
-                self.assertEqual(
-                    nic.networkid,
-                    nic_network["network"],
-                    msg="VM NIC(InstanceID: {}) network mismatch, expected = {}, result = {}".format(nic_network["nic"], nic_network["network"], nic.networkid)
-                )
+            # Verify nics
+            self.verify_nics(nicnetworklist, vm.id)
             # Verify disks
-            cmd = listVolumes.listVolumesCmd()
-            cmd.virtualmachineid = vm.id
-            cmd.listall = True
-            vm_volumes =  self.apiclient.listVolumes(cmd)
-            self.assertEqual(
-                isinstance(vm_volumes, list),
-                True,
-                "Check listVolumes response returns a valid list"
-            )
-            self.assertEqual(
-                len(disks),
-                len(vm_volumes),
-                msg="VM volumes count is different, expected = {}, result = {}".format(len(disks), len(vm_volumes))
-            )
-            disks.sort(key=itemgetter('diskNumber'))
-            vm_volumes.sort(key=itemgetter('deviceid'))
-            for j in range(len(vm_volumes)):
-                volume = vm_volumes[j]
-                disk = disks[j]
-                self.assertEqual(
-                    volume.size,
-                    disk["virtualSize"],
-                    msg="VM Volume(diskNumber: {}) network mismatch, expected = {}, result = {}".format(disk["diskNumber"], disk["virtualSize"], volume.size)
-                )
-
-            original_properties = self.services['virtual_machine_vapps']['properties']
+            self.verify_disks(disks, vm.id)
+            # Verify properties
+            original_properties = vm_service['properties']
             vm_properties = get_vm_vapp_configs(self.apiclient, self.config, self.zone, vm.instancename)
             for property in original_properties:
                 if property["key"] in vm_properties:
