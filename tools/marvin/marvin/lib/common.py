@@ -428,12 +428,22 @@ def get_test_ovf_templates(apiclient, zone_id=None, test_ovf_templates=None, hyp
         if validateList(templates)[0] != PASS:
             template = Template.register(apiclient, test_template, zoneid=zone_id, hypervisor=hypervisor.lower(), randomize_name=False)
             template.download(apiclient)
-            result.append(template)
+            retries = 3
+            while (template.details == None or len(template.details.__dict__) == 0) and retries > 0:
+                time.sleep(10)
+                template_list = Template.list(apiclient, id=template.id, zoneid=zone_id, templatefilter='all')
+                if isinstance(template_list, list):
+                    template = Template(template_list[0].__dict__)
+                retries = retries - 1
+            if template.details == None or len(template.details.__dict__) == 0:
+                template.delete(apiclient)
+            else:
+                result.append(template)
 
         if templates:
             for template in templates:
-                if template.isready and template.ispublic:
-                    result.append(template)
+                if template.isready and template.ispublic and template.details != None and len(template.details.__dict__) > 0:
+                    result.append(template.__dict__)
 
     return result
 

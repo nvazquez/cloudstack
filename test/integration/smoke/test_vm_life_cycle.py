@@ -978,7 +978,7 @@ class TestSecuredVmMigration(cloudstackTestCase):
                       sleep 30 && \
                       service cloudstack-agent restart")
         print("Unsecuring Host: %s" % (host.name))
-        self.waitUntilHostInState(hostId=host.id, state="Up") 
+        self.waitUntilHostInState(hostId=host.id, state="Up")
         self.check_connection(host=host, secured='false')
         return host
 
@@ -1734,10 +1734,8 @@ class TestVAppsVM(cloudstackTestCase):
             ]
 
             # Uncomment when tests are finished, to cleanup the test templates
-            """
             for template in cls.templates:
                 cls._cleanup.append(template)
-            """
 
     @classmethod
     def tearDownClass(cls):
