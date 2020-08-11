@@ -27,7 +27,9 @@ from marvin.cloudstackAPI import (recoverVirtualMachine,
                                   migrateVirtualMachine,
                                   migrateVirtualMachineWithVolume,
                                   unmanageVirtualMachine,
-                                  listUnmanagedInstances)
+                                  listUnmanagedInstances
+                                  listNics,
+                                  listVolumes)
 from marvin.lib.utils import *
 
 from marvin.lib.base import (Account,
@@ -1760,16 +1762,21 @@ class TestVAppsVM(cloudstackTestCase):
         details = template.details.__dict__
         configurations = []
         disks = []
+        isos = []
         networks = []
         for propKey in details:
             if propKey.startswith('ACS-configuration'):
-                configurations.append(details[propKey])
+                configurations.append(json.loads(details[propKey]))
             elif propKey.startswith('ACS-disk'):
-                disks.append(details[propKey])
+                detail = json.loads(details[propKey])
+                if detail['isIso'] == True:
+                    isos.append(detail)
+                else:
+                    disks.append(detail)
             elif propKey.startswith('ACS-network'):
-                networks.append(details[propKey])
+                networks.append(json.loads(details[propKey]))
 
-        return configurations, disks, networks
+        return configurations, disks, isos, networks
 
     @attr(tags=["advanced", "advancedns", "smoke", "sg", "dev"], required_hardware="false")
     @skipTestIf("hypervisorNotSupported")
@@ -1784,10 +1791,10 @@ class TestVAppsVM(cloudstackTestCase):
         """
 
         for template in self.templates:
-            configurations, disks, network = self.get_ova_parsed_information_from_template(template)
+            configurations, disks, isos, network = self.get_ova_parsed_information_from_template(template)
 
             if configurations:
-                conf = json.loads(configurations[0])
+                conf = configurations[0]
                 items = conf['hardwareItems']
                 cpu_speed = 1000
                 cpu_number = 0
@@ -1868,15 +1875,22 @@ class TestVAppsVM(cloudstackTestCase):
                 msg="VM is not in Running state"
             )
 
-            vm_nics = vm.nic
+            # Verify NICs
+            cmd = listNics.listNicsCmd()
+            cmd.virtualmachineid = vm.id
+            vm_nics =  self.apiclient.listNics(cmd)
+            self.assertEqual(
+                isinstance(vm_nics, list),
+                True,
+                "Check listNics response returns a valid list"
+            )
             self.assertEqual(
                 len(nicnetworklist),
                 len(vm_nics),
                 msg="VM NIC count is different, expected = {}, result = {}".format(len(nicnetworklist), len(vm_nics))
             )
-
-            nicnetworklist.sort(key=itemgetter('network'))
-            vm_nics.sort(key=itemgetter('networkid'))
+            nicnetworklist.sort(key=itemgetter('nic')) # CS will create NIC in order of InstanceID. Check network order
+            vm_nics.sort(key=itemgetter('deviceid'))
             for i in range(len(vm_nics)):
                 nic = vm_nics[i]
                 nic_network = nicnetworklist[i]
@@ -1884,6 +1898,31 @@ class TestVAppsVM(cloudstackTestCase):
                     nic.networkid,
                     nic_network["network"],
                     msg="VM NIC(InstanceID: {}) network mismatch, expected = {}, result = {}".format(nic_network["nic"], nic_network["network"], nic.networkid)
+                )
+            # Verify disks
+            cmd = listVolumes.listVolumesCmd()
+            cmd.virtualmachineid = vm.id
+            cmd.listall = True
+            vm_volumes =  self.apiclient.listVolumes(cmd)
+            self.assertEqual(
+                isinstance(vm_volumes, list),
+                True,
+                "Check listVolumes response returns a valid list"
+            )
+            self.assertEqual(
+                len(disks),
+                len(vm_volumes),
+                msg="VM volumes count is different, expected = {}, result = {}".format(len(disks), len(vm_volumes))
+            )
+            disks.sort(key=itemgetter('diskNumber'))
+            vm_volumes.sort(key=itemgetter('deviceid'))
+            for j in range(len(vm_volumes)):
+                volume = vm_volumes[j]
+                disk = disks[j]
+                self.assertEqual(
+                    volume.size,
+                    disk["virtualSize"],
+                    msg="VM Volume(diskNumber: {}) network mismatch, expected = {}, result = {}".format(disk["diskNumber"], disk["virtualSize"], volume.size)
                 )
 
             original_properties = self.services['virtual_machine_vapps']['properties']
