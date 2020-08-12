@@ -99,7 +99,7 @@ public class ListTemplatesCmd extends BaseListTaggedResourcesCmd implements User
     public EnumSet<ApiConstants.DomainDetails> getDetails() throws InvalidParameterValueException {
         EnumSet<ApiConstants.DomainDetails> dv;
         if (CollectionUtils.isEmpty(viewDetails)) {
-            dv = EnumSet.of(ApiConstants.DomainDetails.min);
+            dv = EnumSet.of(ApiConstants.DomainDetails.all);
         } else {
             try {
                 ArrayList<ApiConstants.DomainDetails> dc = new ArrayList<>();
