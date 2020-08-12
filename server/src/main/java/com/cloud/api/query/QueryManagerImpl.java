@@ -3271,7 +3271,7 @@ public class QueryManagerImpl extends MutualExclusiveIdsManagerBase implements Q
             respView = ResponseView.Full;
         }
 
-        List<TemplateResponse> templateResponses = ViewResponseHelper.createTemplateResponse(respView, result.first().toArray(new TemplateJoinVO[result.first().size()]));
+        List<TemplateResponse> templateResponses = ViewResponseHelper.createTemplateResponse(cmd.getDetails(), respView, result.first().toArray(new TemplateJoinVO[result.first().size()]));
         response.setResponses(templateResponses, result.second());
         return response;
     }

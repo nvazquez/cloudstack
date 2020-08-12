@@ -213,10 +213,6 @@ public class TemplateResponse extends BaseResponseWithTagInformation implements 
     @Param(description = "VMware only: the list required properties for deployment", responseObject = TemplateOVFPropertyResponse.class)
     private Set<TemplateOVFPropertyResponse> properties;
 
-    @SerializedName("licenceagreements")
-    @Param(description = "VMware only: the list of end user licence agreements", responseObject = TemplateEulaResponse.class)
-    private Set<TemplateEulaResponse> eulas;
-
     public TemplateResponse() {
         tags = new LinkedHashSet<>();
     }
@@ -439,13 +435,5 @@ public class TemplateResponse extends BaseResponseWithTagInformation implements 
 
     public void setRequiresHvm(Boolean requiresHvm) {
         this.requiresHvm = requiresHvm;
-    }
-
-    public Set<TemplateEulaResponse> getEulas() {
-        return eulas;
-    }
-
-    public void setEulas(Set<TemplateEulaResponse> eulas) {
-        this.eulas = eulas;
     }
 }

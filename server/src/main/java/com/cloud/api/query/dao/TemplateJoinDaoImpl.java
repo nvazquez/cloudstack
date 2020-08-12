@@ -17,6 +17,7 @@
 package com.cloud.api.query.dao;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -29,6 +30,7 @@ import com.cloud.agent.api.storage.OVFPropertyTO;
 import com.cloud.storage.ImageStore;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import org.apache.cloudstack.api.ApiConstants;
 import org.apache.cloudstack.utils.security.DigestHelper;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
@@ -144,7 +146,7 @@ public class TemplateJoinDaoImpl extends GenericDaoBaseWithTagInformation<Templa
     }
 
     @Override
-    public TemplateResponse newTemplateResponse(ResponseView view, TemplateJoinVO template) {
+    public TemplateResponse newTemplateResponse(EnumSet<ApiConstants.DomainDetails> detailsView, ResponseView view, TemplateJoinVO template) {
         TemplateResponse templateResponse = new TemplateResponse();
         templateResponse.setId(template.getUuid());
         templateResponse.setName(template.getName());
@@ -216,8 +218,10 @@ public class TemplateJoinDaoImpl extends GenericDaoBaseWithTagInformation<Templa
         }
 
         // set details map
-        Map<String, String> details = _templateDetailsDao.listDetailsKeyPairs(template.getId());
-        templateResponse.setDetails(details);
+        if (detailsView.contains(ApiConstants.DomainDetails.all) || detailsView.contains(ApiConstants.DomainDetails.resource)) {
+            Map<String, String> details = _templateDetailsDao.listDetailsKeyPairs(template.getId());
+            templateResponse.setDetails(details);
+        }
 
         // update tag information
         long tag_id = template.getTagId();
@@ -294,22 +298,24 @@ public class TemplateJoinDaoImpl extends GenericDaoBaseWithTagInformation<Templa
     }
 
     @Override
-    public TemplateResponse setTemplateResponse(ResponseView view, TemplateResponse templateResponse, TemplateJoinVO template) {
+    public TemplateResponse setTemplateResponse(EnumSet<ApiConstants.DomainDetails> detailsView, ResponseView view, TemplateResponse templateResponse, TemplateJoinVO template) {
         Gson gson = new Gson();
 
-        // update details map
-        String key = template.getDetailName();
-        if (key != null) {
-            if (key.startsWith(ImageStore.ACS_PROPERTY_PREFIX)) {
-                try {
-                    OVFPropertyTO property = gson.fromJson(template.getDetailValue(), OVFPropertyTO.class);
-                    templateResponse.addProperty(createTemplateOVFPropertyResponse(property));
-                } catch (JsonSyntaxException e) {
-                    s_logger.warn(String.format("found an unexpected property for template '%s'; %s: %s",
-                            template.getUuid(), template.getDetailName(), template.getDetailValue()));
+        if (detailsView.contains(ApiConstants.DomainDetails.all) || detailsView.contains(ApiConstants.DomainDetails.resource)) {
+            // update details map
+            String key = template.getDetailName();
+            if (key != null) {
+                if (key.startsWith(ImageStore.ACS_PROPERTY_PREFIX)) {
+                    try {
+                        OVFPropertyTO property = gson.fromJson(template.getDetailValue(), OVFPropertyTO.class);
+                        templateResponse.addProperty(createTemplateOVFPropertyResponse(property));
+                    } catch (JsonSyntaxException e) {
+                        s_logger.warn(String.format("found an unexpected property for template '%s'; %s: %s",
+                                template.getUuid(), template.getDetailName(), template.getDetailValue()));
+                    }
                 }
+                templateResponse.addDetail(key, template.getDetailValue());
             }
-            templateResponse.addDetail(key, template.getDetailValue());
         }
 
         // update tag information
