@@ -35,5 +35,6 @@ public interface VMTemplateDetailsDao extends GenericDao<VMTemplateDetailVO, Lon
     List<NetworkPrerequisiteTO> listNetworkRequirementsByTemplateId(long templateId);
     List<DatadiskTO> listDisksByTemplateId(long templateId);
 
-    List<VMTemplateDetailVO> listDetailsByTemplateId(long templateId, String prefix);
+    List<VMTemplateDetailVO> listDetailsByTemplateIdMatchingPrefix(long templateId, String prefix);
+    String getTemplateEulaSectionsUrl(long templateId);
 }

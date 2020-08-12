@@ -192,7 +192,7 @@ public class TemplateResponse extends BaseResponseWithTagInformation implements 
     private Boolean directDownload;
 
     @SerializedName(ApiConstants.DEPLOY_AS_IS)
-    @Param(description = "Vmware Only: true if template is deployed without orchestrating disks and networks but \"as-is\" defined in the template.")
+    @Param(description = "VMware only: true if template is deployed without orchestrating disks and networks but \"as-is\" defined in the template.")
     private Boolean deployAsIs;
 
     @SerializedName("parenttemplateid")
@@ -210,8 +210,12 @@ public class TemplateResponse extends BaseResponseWithTagInformation implements 
     private Boolean requiresHvm;
 
     @SerializedName(ApiConstants.PROPERTIES)
-    @Param(description = "the list required properties for deployment", responseObject = TemplateOVFPropertyResponse.class)
+    @Param(description = "VMware only: the list required properties for deployment", responseObject = TemplateOVFPropertyResponse.class)
     private Set<TemplateOVFPropertyResponse> properties;
+
+    @SerializedName("licenceagreements")
+    @Param(description = "VMware only: the list of end user licence agreements", responseObject = TemplateEulaResponse.class)
+    private Set<TemplateEulaResponse> eulas;
 
     public TemplateResponse() {
         tags = new LinkedHashSet<>();
@@ -435,5 +439,13 @@ public class TemplateResponse extends BaseResponseWithTagInformation implements 
 
     public void setRequiresHvm(Boolean requiresHvm) {
         this.requiresHvm = requiresHvm;
+    }
+
+    public Set<TemplateEulaResponse> getEulas() {
+        return eulas;
+    }
+
+    public void setEulas(Set<TemplateEulaResponse> eulas) {
+        this.eulas = eulas;
     }
 }

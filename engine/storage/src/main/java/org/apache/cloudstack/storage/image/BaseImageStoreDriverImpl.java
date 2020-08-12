@@ -18,6 +18,7 @@
  */
 package org.apache.cloudstack.storage.image;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 import javax.inject.Inject;
 
 import com.cloud.agent.api.storage.OVFConfigurationTO;
+import com.cloud.agent.api.storage.OVFEulaSectionTO;
 import com.cloud.agent.api.storage.OVFPropertyTO;
 import com.cloud.agent.api.storage.OVFVirtualHardwareItemTO;
 import com.cloud.agent.api.storage.OVFVirtualHardwareItemTO.HardwareResourceType;
@@ -36,6 +38,7 @@ import com.cloud.agent.api.storage.OVFVirtualHardwareSectionTO;
 import com.cloud.storage.ImageStore;
 import com.cloud.storage.Upload;
 import com.cloud.storage.VMTemplateDetailVO;
+import com.cloud.utils.compression.CompressionUtil;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.apache.cloudstack.api.net.NetworkPrerequisiteTO;
@@ -281,11 +284,12 @@ public abstract class BaseImageStoreDriverImpl implements ImageStoreDriver {
         List<NetworkPrerequisiteTO> networkRequirements = answer.getNetworkRequirements();
         List<DatadiskTO> disks = answer.getDisks();
         OVFVirtualHardwareSectionTO ovfHardwareSection = answer.getOvfHardwareSection();
+        List<OVFEulaSectionTO> eulaSections = answer.getEulaSections();
 
         TemplateDataStoreVO tmpltStoreVO = _templateStoreDao.findByStoreTemplate(store.getId(), obj.getId());
         if (tmpltStoreVO != null) {
             if (tmpltStoreVO.getDownloadState() == VMTemplateStorageResourceAssoc.Status.DOWNLOADED) {
-                persistExtraDetails(obj, ovfProperties, networkRequirements, disks, ovfHardwareSection);
+                persistExtraDetails(obj, ovfProperties, networkRequirements, disks, ovfHardwareSection, eulaSections);
                 processOVFHardwareSection(ovfHardwareSection, obj.getId());
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Template is already in DOWNLOADED state, ignore further incoming DownloadAnswer");
@@ -326,7 +330,7 @@ public abstract class BaseImageStoreDriverImpl implements ImageStoreDriver {
                 templateDaoBuilder.setChecksum(answer.getCheckSum());
                 _templateDao.update(obj.getId(), templateDaoBuilder);
             }
-            persistExtraDetails(obj, ovfProperties, networkRequirements, disks, ovfHardwareSection);
+            persistExtraDetails(obj, ovfProperties, networkRequirements, disks, ovfHardwareSection, eulaSections);
             processOVFHardwareSection(ovfHardwareSection, obj.getId());
 
             CreateCmdResult result = new CreateCmdResult(null, null);
@@ -335,7 +339,7 @@ public abstract class BaseImageStoreDriverImpl implements ImageStoreDriver {
         return null;
     }
 
-    private void persistExtraDetails(DataObject obj, List<OVFPropertyTO> ovfProperties, List<NetworkPrerequisiteTO> networkRequirements, List<DatadiskTO> disks, OVFVirtualHardwareSectionTO ovfHardwareSection) {
+    private void persistExtraDetails(DataObject obj, List<OVFPropertyTO> ovfProperties, List<NetworkPrerequisiteTO> networkRequirements, List<DatadiskTO> disks, OVFVirtualHardwareSectionTO ovfHardwareSection, List<OVFEulaSectionTO> eulaSections) {
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace(String.format("saving %d ovf properties for template '%s' as details", ovfProperties != null ? ovfProperties.size() : 0, obj.getUuid()));
         }
@@ -354,7 +358,24 @@ public abstract class BaseImageStoreDriverImpl implements ImageStoreDriver {
         if (CollectionUtils.isNotEmpty(disks)) {
             persistDiskDefinitions(disks, obj.getId());
         }
+        if (CollectionUtils.isNotEmpty(eulaSections)) {
+            persistEulaSectionsAsTemplateDetails(eulaSections, obj.getId());
+        }
         persistOVFHardwareSectionAsTemplateDetails(ovfHardwareSection, obj.getId());
+    }
+
+    private void persistEulaSectionsAsTemplateDetails(List<OVFEulaSectionTO> eulaSections, long templateId) {
+        CompressionUtil compressionUtil = new CompressionUtil();
+        for (OVFEulaSectionTO eulaSectionTO : eulaSections) {
+            String key = ImageStore.OVF_EULA_SECTION_PREFIX + eulaSectionTO.getInfo();
+            byte[] compressedLicense = eulaSectionTO.getCompressedLicense();
+            try {
+                String detailValue = compressionUtil.decompressByteArary(compressedLicense);
+                savePropertyAttribute(templateId, key, detailValue);
+            } catch (IOException e) {
+                LOGGER.error("Could not decompress the license for template " + templateId, e);
+            }
+        }
     }
 
     /**

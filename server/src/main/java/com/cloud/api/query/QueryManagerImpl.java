@@ -76,6 +76,7 @@ import org.apache.cloudstack.api.command.user.project.ListProjectsCmd;
 import org.apache.cloudstack.api.command.user.resource.ListDetailOptionsCmd;
 import org.apache.cloudstack.api.command.user.securitygroup.ListSecurityGroupsCmd;
 import org.apache.cloudstack.api.command.user.tag.ListTagsCmd;
+import org.apache.cloudstack.api.command.user.template.ListTemplateEulaSections;
 import org.apache.cloudstack.api.command.user.template.ListTemplateOVFProperties;
 import org.apache.cloudstack.api.command.user.template.ListTemplatesCmd;
 import org.apache.cloudstack.api.command.user.vm.ListVMsCmd;
@@ -106,6 +107,7 @@ import org.apache.cloudstack.api.response.SecurityGroupResponse;
 import org.apache.cloudstack.api.response.ServiceOfferingResponse;
 import org.apache.cloudstack.api.response.StoragePoolResponse;
 import org.apache.cloudstack.api.response.StorageTagResponse;
+import org.apache.cloudstack.api.response.TemplateEulaResponse;
 import org.apache.cloudstack.api.response.TemplateOVFPropertyResponse;
 import org.apache.cloudstack.api.response.TemplateResponse;
 import org.apache.cloudstack.api.response.UserResponse;
@@ -4080,6 +4082,34 @@ public class QueryManagerImpl extends MutualExclusiveIdsManagerBase implements Q
         }
 
         return responseGenerator.createHealthCheckResponse(_routerDao.findById(routerId), result);
+    }
+
+    @Override
+    public ListResponse<TemplateEulaResponse> listTemplateEulaSections(ListTemplateEulaSections cmd) {
+        Long templateId = cmd.getTemplateId();
+        VMTemplateVO template = _templateDao.findById(templateId);
+        if (template == null || template.getRemoved() != null) {
+            throw new InvalidParameterValueException("Could not find template with ID " + templateId);
+        }
+
+        if (template.getHypervisorType() != HypervisorType.VMware || template.getFormat() != ImageFormat.OVA) {
+            throw new InvalidParameterValueException("Invalid format to retrieve EULA sections for template with ID " + templateId);
+        }
+
+        ListResponse<TemplateEulaResponse> response = new ListResponse<>();
+        List<TemplateEulaResponse> result = new ArrayList<>();
+
+        List<VMTemplateDetailVO> eulaDetails =
+                vmTemplateDetailsDao.listDetailsByTemplateIdMatchingPrefix(templateId, ImageStore.OVF_EULA_SECTION_PREFIX);
+        if (CollectionUtils.isNotEmpty(eulaDetails)) {
+            for (VMTemplateDetailVO detail : eulaDetails) {
+                String eulaInfo = detail.getName();
+                String eulaLicense = detail.getValue();
+                TemplateEulaResponse eulaResponse = new TemplateEulaResponse(eulaInfo, eulaLicense);
+                result.add(eulaResponse);
+            }
+        }
+        return response;
     }
 
     @Override

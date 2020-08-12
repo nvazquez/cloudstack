@@ -29,6 +29,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import com.cloud.agent.api.storage.OVFConfigurationTO;
+import com.cloud.agent.api.storage.OVFEulaSectionTO;
 import com.cloud.agent.api.storage.OVFPropertyTO;
 import com.cloud.agent.api.storage.OVFVirtualHardwareItemTO;
 import com.cloud.agent.api.storage.OVFVirtualHardwareSectionTO;
@@ -146,8 +147,10 @@ public class OVAProcessor extends AdapterBase implements Processor {
             LOGGER.info("Found " + hardwareItems.size() + " virtual hardware items");
         }
         info.hardwareSection = hardwareSection;
-
-        // FR37 TODO add any user queries that are required for this OVA
+        List<OVFEulaSectionTO> eulaSections = ovfHelper.getEulaSectionsFromDocument(doc);
+        if (CollectionUtils.isNotEmpty(eulaSections)) {
+            info.eulaSections = eulaSections;
+        }
     }
 
     private void setFileSystemAccessRights(String templatePath) {

@@ -2454,6 +2454,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
      */
     private void mapSpecDisksToClonedDisks(VirtualMachineMO vmMo, String vmInternalCSName, DiskTO[] specDisks) {
         try {
+            s_logger.debug("Mapping spec disks information to cloned VM disks for VM " + vmInternalCSName);
             if (vmMo != null && ArrayUtils.isNotEmpty(specDisks)) {
                 List<VirtualDisk> vmDisks = vmMo.getVirtualDisks();
                 List<DiskTO> sortedDisks = Arrays.asList(sortVolumesByDeviceId(specDisks))
@@ -2489,7 +2490,11 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
                                 }
                                 volumeObjectTO.setPath(relativePath);
                                 specDisk.setPath(relativePath);
+                            } else {
+                                s_logger.error("Empty backing filename for volume " + volumeObjectTO.getName());
                             }
+                        } else {
+                            s_logger.error("Could not get volume backing info for volume " + volumeObjectTO.getName());
                         }
                     }
                 }

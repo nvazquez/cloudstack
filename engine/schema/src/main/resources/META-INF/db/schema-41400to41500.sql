@@ -296,3 +296,6 @@ CREATE VIEW `cloud`.`template_view` AS
              OR (`resource_tags`.`resource_type` = 'ISO')))));
 
 DROP TABLE IF EXISTS `cloud`.`template_ovf_properties`;
+
+-- Extend the template details value field
+ALTER TABLE `cloud`.`vm_template_details` CHANGE COLUMN `value` `value` TEXT NOT NULL ;

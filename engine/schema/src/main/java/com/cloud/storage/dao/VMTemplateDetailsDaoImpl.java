@@ -94,7 +94,7 @@ public class VMTemplateDetailsDaoImpl extends ResourceDetailsDaoBase<VMTemplateD
 
     @Override
     public List<OVFPropertyTO> listPropertiesByTemplateId(long templateId) {
-        List<VMTemplateDetailVO> ovfProperties = listDetailsByTemplateId(templateId, ImageStore.ACS_PROPERTY_PREFIX);
+        List<VMTemplateDetailVO> ovfProperties = listDetailsByTemplateIdMatchingPrefix(templateId, ImageStore.ACS_PROPERTY_PREFIX);
         List<OVFPropertyTO> properties = new ArrayList<>();
         for (VMTemplateDetailVO property : ovfProperties) {
             OVFPropertyTO ovfPropertyTO = gson.fromJson(property.getValue(), OVFPropertyTO.class);
@@ -105,7 +105,7 @@ public class VMTemplateDetailsDaoImpl extends ResourceDetailsDaoBase<VMTemplateD
 
     @Override
     public List<NetworkPrerequisiteTO> listNetworkRequirementsByTemplateId(long templateId) {
-        List<VMTemplateDetailVO> networkDetails = listDetailsByTemplateId(templateId, ImageStore.REQUIRED_NETWORK_PREFIX);
+        List<VMTemplateDetailVO> networkDetails = listDetailsByTemplateIdMatchingPrefix(templateId, ImageStore.REQUIRED_NETWORK_PREFIX);
         List<NetworkPrerequisiteTO> networkPrereqs = new ArrayList<>();
         for (VMTemplateDetailVO property : networkDetails) {
             NetworkPrerequisiteTO ovfPropertyTO = gson.fromJson(property.getValue(), NetworkPrerequisiteTO.class);
@@ -122,7 +122,7 @@ public class VMTemplateDetailsDaoImpl extends ResourceDetailsDaoBase<VMTemplateD
 
     @Override
     public List<DatadiskTO> listDisksByTemplateId(long templateId) {
-        List<VMTemplateDetailVO> diskDefinitions = listDetailsByTemplateId(templateId, ImageStore.DISK_DEFINITION_PREFIX);
+        List<VMTemplateDetailVO> diskDefinitions = listDetailsByTemplateIdMatchingPrefix(templateId, ImageStore.DISK_DEFINITION_PREFIX);
         List<DatadiskTO> disks = new ArrayList<>();
         for (VMTemplateDetailVO detail : diskDefinitions) {
             DatadiskTO datadiskTO = gson.fromJson(detail.getValue(), DatadiskTO.class);
@@ -132,11 +132,23 @@ public class VMTemplateDetailsDaoImpl extends ResourceDetailsDaoBase<VMTemplateD
     }
 
     @Override
-    public List<VMTemplateDetailVO> listDetailsByTemplateId(long templateId, String prefix) {
+    public List<VMTemplateDetailVO> listDetailsByTemplateIdMatchingPrefix(long templateId, String prefix) {
         SearchCriteria<VMTemplateDetailVO> ssc = createSearchCriteria();
         ssc.addAnd("resourceId", SearchCriteria.Op.EQ, templateId);
         ssc.addAnd("name", SearchCriteria.Op.LIKE, prefix + "%");
 
         return search(ssc, null);
+    }
+
+    @Override
+    public String getTemplateEulaSectionsUrl(long templateId) {
+        List<VMTemplateDetailVO> details = findDetails(templateId, ImageStore.OVF_EULA_SECTION_PREFIX);
+        if (CollectionUtils.isEmpty(details)) {
+            return null;
+        }
+        if (details.size() > 1) {
+            LOGGER.error("Multiple details for EULA sections for template " + templateId + " returning one");
+        }
+        return details.get(0).getValue();
     }
 }

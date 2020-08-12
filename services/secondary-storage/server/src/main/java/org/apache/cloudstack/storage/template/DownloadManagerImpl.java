@@ -37,6 +37,7 @@ import java.util.concurrent.Executors;
 
 import javax.naming.ConfigurationException;
 
+import com.cloud.agent.api.storage.OVFEulaSectionTO;
 import com.cloud.agent.api.storage.OVFVirtualHardwareSectionTO;
 import com.cloud.agent.api.to.DatadiskTO;
 import com.cloud.agent.api.storage.OVFPropertyTO;
@@ -134,6 +135,7 @@ public class DownloadManagerImpl extends ManagerBase implements DownloadManager 
         private List<NetworkPrerequisiteTO> networks;
         private List<DatadiskTO> disks;
         private OVFVirtualHardwareSectionTO hardwareSection;
+        private List<OVFEulaSectionTO> eulaSections;
 
         public DownloadJob(TemplateDownloader td, String jobId, long id, String tmpltName, ImageFormat format, boolean hvm, Long accountId, String descr, String cksum,
                 String installPathPrefix, ResourceType resourceType) {
@@ -259,6 +261,14 @@ public class DownloadManagerImpl extends ManagerBase implements DownloadManager 
 
         public OVFVirtualHardwareSectionTO getVirtualHardwareSection() {
             return this.hardwareSection;
+        }
+
+        public List<OVFEulaSectionTO> getEulaSections() {
+            return eulaSections;
+        }
+
+        public void setEulaSections(List<OVFEulaSectionTO> eulaSections) {
+            this.eulaSections = eulaSections;
         }
     }
 
@@ -563,6 +573,9 @@ public class DownloadManagerImpl extends ManagerBase implements DownloadManager 
                     dnld.setDisks(info.disks);
                 }
                 dnld.setVirtualHardwareSection(info.hardwareSection);
+                if (CollectionUtils.isNotEmpty(info.eulaSections)) {
+                    dnld.setEulaSections(info.eulaSections);
+                }
                 break;
             }
         }
@@ -873,6 +886,9 @@ public class DownloadManagerImpl extends ManagerBase implements DownloadManager 
                 answer.setDisks(dj.getDisks());
             }
             answer.setOvfHardwareSection(dj.getVirtualHardwareSection());
+            if (CollectionUtils.isNotEmpty(dj.getEulaSections())) {
+                answer.setEulaSections(dj.getEulaSections());
+            }
             jobs.remove(jobId);
             return answer;
         default:

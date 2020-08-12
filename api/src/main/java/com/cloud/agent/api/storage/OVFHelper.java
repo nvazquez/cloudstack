@@ -40,6 +40,7 @@ import javax.xml.transform.stream.StreamResult;
 
 import com.cloud.configuration.Resource.ResourceType;
 import com.cloud.exception.InternalErrorException;
+import com.cloud.utils.compression.CompressionUtil;
 import org.apache.cloudstack.api.net.NetworkPrerequisiteTO;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
@@ -172,6 +173,12 @@ public class OVFHelper {
         InputSource is = new InputSource(new StringReader(ovfString));
         final Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(is);
         return getVirtualHardwareItemsFromDocumentTree(doc);
+    }
+
+    protected List<OVFEulaSectionTO> getOVFEulaSectionFromXmlString(final String ovfString) throws ParserConfigurationException, IOException, SAXException {
+        InputSource is = new InputSource(new StringReader(ovfString));
+        final Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(is);
+        return getEulaSectionsFromDocument(doc);
     }
 
     public List<DatadiskTO> getOVFVolumeInfoFromFile(final String ovfFilePath) throws InternalErrorException {
@@ -633,7 +640,6 @@ public class OVFHelper {
                 String configurationId = configuration.getAttribute("ovf:id");
                 String description = getChildNodeValue(configuration, "Description");
                 String label = getChildNodeValue(configuration, "Label");
-                //getVirtualHardwareItemsFromDocumentTree(doc);
                 OVFConfigurationTO option = new OVFConfigurationTO(configurationId, label, description);
                 options.add(option);
             }
@@ -704,6 +710,46 @@ public class OVFHelper {
             }
         }
         return null;
+    }
+
+    protected byte[] compressOVFEula(String license) throws IOException {
+        CompressionUtil compressionUtil = new CompressionUtil();
+        return compressionUtil.compressString(license);
+    }
+
+    public List<OVFEulaSectionTO> getEulaSectionsFromDocument(Document doc) {
+        List<OVFEulaSectionTO> eulas = new LinkedList<>();
+        if (doc == null) {
+            return eulas;
+        }
+        NodeList eulaSections = doc.getElementsByTagName("EulaSection");
+        if (eulaSections.getLength() > 0) {
+            for (int index = 0; index < eulaSections.getLength(); index++) {
+                Node eulaNode = eulaSections.item(index);
+                NodeList eulaChildNodes = eulaNode.getChildNodes();
+                String eulaInfo = null;
+                String eulaLicense = null;
+                for (int i = 0; i < eulaChildNodes.getLength(); i++) {
+                    Node eulaItem = eulaChildNodes.item(i);
+                    if (eulaItem.getNodeName().equalsIgnoreCase("Info")) {
+                        eulaInfo = eulaItem.getTextContent();
+                    } else if (eulaItem.getNodeName().equalsIgnoreCase("License")) {
+                        eulaLicense = eulaItem.getTextContent();
+                    }
+                }
+                byte[] compressedLicense = new byte[0];
+                try {
+                    compressedLicense = compressOVFEula(eulaLicense);
+                } catch (IOException e) {
+                    s_logger.error("Could not compress the license for info " + eulaInfo);
+                    continue;
+                }
+                OVFEulaSectionTO eula = new OVFEulaSectionTO(eulaInfo, compressedLicense);
+                eulas.add(eula);
+            }
+        }
+
+        return eulas;
     }
 
     class OVFFile {

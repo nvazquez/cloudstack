@@ -49,6 +49,8 @@ public class DownloadAnswer extends Answer {
     private List<DatadiskTO> disks;
     @LogLevel(LogLevel.Log4jLevel.Off)
     private OVFVirtualHardwareSectionTO ovfHardwareSection;
+    @LogLevel(LogLevel.Log4jLevel.Off)
+    private List<OVFEulaSectionTO> eulaSections;
 
     public String getCheckSum() {
         return checkSum;
@@ -189,5 +191,13 @@ public class DownloadAnswer extends Answer {
 
     public void setOvfHardwareSection(OVFVirtualHardwareSectionTO ovfHardwareSection) {
         this.ovfHardwareSection = ovfHardwareSection;
+    }
+
+    public List<OVFEulaSectionTO> getEulaSections() {
+        return eulaSections;
+    }
+
+    public void setEulaSections(List<OVFEulaSectionTO> eulaSections) {
+        this.eulaSections = eulaSections;
     }
 }
