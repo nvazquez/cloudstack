@@ -26,7 +26,6 @@ import javax.inject.Inject;
 import com.cloud.storage.upload.params.IsoUploadParams;
 import com.cloud.storage.upload.params.TemplateUploadParams;
 import com.cloud.storage.upload.params.UploadParams;
-import org.apache.cloudstack.api.command.admin.template.RegisterTemplateCmdByAdmin;
 import org.apache.cloudstack.api.command.user.iso.GetUploadParamsForIsoCmd;
 import org.apache.cloudstack.api.command.user.template.GetUploadParamsForTemplateCmd;
 import org.apache.commons.collections.CollectionUtils;
@@ -284,16 +283,10 @@ public abstract class TemplateAdapterBase extends AdapterBase implements Templat
                     + EnumUtils.listValues(HypervisorType.values()).replace("None, ", ""));
         }
 
-        // for OVA, deploy as is will be default and only root can override
-        boolean deployAsIs = false;
-        if (cmd instanceof RegisterTemplateCmdByAdmin) {
-            deployAsIs = ((RegisterTemplateCmdByAdmin)cmd).isDeployAsIs();
-        }
-
         return prepare(false, CallContext.current().getCallingUserId(), cmd.getTemplateName(), cmd.getDisplayText(), cmd.getBits(), cmd.isPasswordEnabled(), cmd.getRequiresHvm(),
                 cmd.getUrl(), cmd.isPublic(), cmd.isFeatured(), cmd.isExtractable(), cmd.getFormat(), cmd.getOsTypeId(), zoneId, hypervisorType, cmd.getChecksum(), true,
                 cmd.getTemplateTag(), owner, cmd.getDetails(), cmd.isSshKeyEnabled(), null, cmd.isDynamicallyScalable(), isRouting ? TemplateType.ROUTING : TemplateType.USER,
-                cmd.isDirectDownload(), deployAsIs);
+                cmd.isDirectDownload(), cmd.isDeployAsIs());
 
     }
 
