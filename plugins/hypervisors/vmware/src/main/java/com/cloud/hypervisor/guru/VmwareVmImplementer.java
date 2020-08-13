@@ -36,6 +36,7 @@ import com.cloud.network.dao.NetworkVO;
 import com.cloud.storage.DataStoreRole;
 import com.cloud.storage.GuestOSHypervisorVO;
 import com.cloud.storage.GuestOSVO;
+import com.cloud.storage.ImageStore;
 import com.cloud.storage.VMTemplateStoragePoolVO;
 import com.cloud.storage.VMTemplateStorageResourceAssoc;
 import com.cloud.storage.Volume;
@@ -248,12 +249,20 @@ class VmwareVmImplementer {
     }
 
     private void setDetails(VirtualMachineTO to, Map<String, String> details) {
+        Map<String, String> detailsToSend = new HashMap<>();
         if (LOGGER.isTraceEnabled()) {
             for (String key: details.keySet()) {
+                if (key.startsWith(ImageStore.OVF_EULA_SECTION_PREFIX) ||
+                        key.startsWith(ImageStore.OVF_HARDWARE_CONFIGURATION_PREFIX) ||
+                        key.startsWith(ImageStore.OVF_HARDWARE_ITEM_PREFIX)) {
+                    LOGGER.trace(String.format("Discarding detail for VM %s: %s => %s", to.getName(), key, details.get(key)));
+                    continue;
+                }
                 LOGGER.trace(String.format("Detail for VM %s: %s => %s",to.getName(), key, details.get(key)));
+                details.put(key, details.get(key));
             }
         }
-        to.setDetails(details);
+        to.setDetails(detailsToSend);
     }
 
     private void configureDomainRouterNicsAndDetails(VirtualMachineProfile vm, VirtualMachineTO to, Map<String, String> details, List<NicProfile> nicProfiles) {

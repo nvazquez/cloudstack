@@ -46,6 +46,7 @@ import javax.naming.ConfigurationException;
 import javax.xml.datatype.XMLGregorianCalendar;
 
 import com.cloud.agent.api.to.DataTO;
+import com.cloud.storage.ImageStore;
 import org.apache.cloudstack.api.ApiConstants;
 import org.apache.cloudstack.storage.command.CopyCommand;
 import org.apache.cloudstack.storage.command.StorageSubSystemCommand;
@@ -2945,7 +2946,10 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
     private static void configCustomExtraOption(List<OptionValue> extraOptions, VirtualMachineTO vmSpec) {
         // we no longer to validation anymore
         for (Map.Entry<String, String> entry : vmSpec.getDetails().entrySet()) {
-            if (entry.getKey().equalsIgnoreCase(VmDetailConstants.BOOT_MODE)) {
+            if (entry.getKey().equalsIgnoreCase(VmDetailConstants.BOOT_MODE) ||
+                    entry.getKey().startsWith(ImageStore.REQUIRED_NETWORK_PREFIX) ||
+                    entry.getKey().startsWith(ImageStore.ACS_PROPERTY_PREFIX) ||
+                    entry.getKey().startsWith(ImageStore.DISK_DEFINITION_PREFIX)) {
                 continue;
             }
             OptionValue newVal = new OptionValue();
