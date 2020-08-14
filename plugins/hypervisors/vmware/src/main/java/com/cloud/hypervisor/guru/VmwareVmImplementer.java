@@ -259,7 +259,7 @@ class VmwareVmImplementer {
                     continue;
                 }
                 LOGGER.trace(String.format("Detail for VM %s: %s => %s",to.getName(), key, details.get(key)));
-                details.put(key, details.get(key));
+                detailsToSend.put(key, details.get(key));
             }
         }
         to.setDetails(detailsToSend);
