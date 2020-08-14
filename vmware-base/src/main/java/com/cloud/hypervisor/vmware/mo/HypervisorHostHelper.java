@@ -1571,20 +1571,35 @@ public class HypervisorHostHelper {
      * - If the cluster hardware version is not set, check datacenter hardware version. If it is set, then it is set to vmConfig
      * - In case both cluster and datacenter hardware version are not set, hardware version is not set to vmConfig
      */
-    protected static void setVMHardwareVersion(VirtualMachineConfigSpec vmConfig, ClusterMO clusterMO, DatacenterMO datacenterMO) throws Exception {
+    public static void setVMHardwareVersion(VirtualMachineConfigSpec vmConfig, ClusterMO clusterMO, DatacenterMO datacenterMO) throws Exception {
+        String version = getNewVMHardwareVersion(clusterMO, datacenterMO);
+        if (StringUtils.isNotBlank(version)) {
+            vmConfig.setVersion(version);
+        }
+    }
+
+    /**
+     * Return the VM hardware version based on the information retrieved by the cluster and datacenter:
+     * - If the cluster hardware version is set, then return this hardware version
+     * - If the cluster hardware version is not set, check datacenter hardware version. If it is set, then return it
+     * - In case both cluster and datacenter hardware version are not set, return null
+     */
+    public static String getNewVMHardwareVersion(ClusterMO clusterMO, DatacenterMO datacenterMO) throws Exception {
+        String version = null;
         ClusterConfigInfoEx clusterConfigInfo = clusterMO != null ? clusterMO.getClusterConfigInfo() : null;
         String clusterHardwareVersion = clusterConfigInfo != null ? clusterConfigInfo.getDefaultHardwareVersionKey() : null;
         if (StringUtils.isNotBlank(clusterHardwareVersion)) {
             s_logger.debug("Cluster hardware version found: " + clusterHardwareVersion + ". Creating VM with this hardware version");
-            vmConfig.setVersion(clusterHardwareVersion);
+            version = clusterHardwareVersion;
         } else {
             DatacenterConfigInfo datacenterConfigInfo = datacenterMO != null ? datacenterMO.getDatacenterConfigInfo() : null;
             String datacenterHardwareVersion = datacenterConfigInfo != null ? datacenterConfigInfo.getDefaultHardwareVersionKey() : null;
             if (StringUtils.isNotBlank(datacenterHardwareVersion)) {
                 s_logger.debug("Datacenter hardware version found: " + datacenterHardwareVersion + ". Creating VM with this hardware version");
-                vmConfig.setVersion(datacenterHardwareVersion);
+                version = datacenterHardwareVersion;
             }
         }
+        return version;
     }
 
     private static VirtualDeviceConfigSpec getControllerSpec(String diskController, int busNum) {

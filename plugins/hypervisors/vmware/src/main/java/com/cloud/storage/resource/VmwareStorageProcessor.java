@@ -3610,15 +3610,26 @@ public class VmwareStorageProcessor implements StorageProcessor {
             if (morDatastore == null) {
                 throw new CloudRuntimeException("Unable to find datastore in vSphere");
             }
+            s_logger.info("Cloning VM " + cloneName + " from template " + templatePrimaryStoreUuid);
             if (!_fullCloneFlag) {
                 createVMLinkedClone(templateMo, dcMo, cloneName, morDatastore, morPool);
             } else {
                 createVMFullClone(templateMo, dcMo, dsMo, cloneName, morDatastore, morPool);
             }
-            return dcMo.findVm(cloneName);
+            VirtualMachineMO vm = dcMo.findVm(cloneName);
+            if (vm == null) {
+                throw new CloudRuntimeException("Unable to get the cloned VM " + cloneName);
+            }
+            ClusterMO clusterMo = new ClusterMO(context, hyperHost.getHyperHostCluster());
+            String hwVersion = HypervisorHostHelper.getNewVMHardwareVersion(clusterMo, dcMo);
+            if (!vm.upgradeVirtualHardwareVersion(hwVersion)) {
+                s_logger.info("Could not upgrade hardware version on VM " + cloneName + ", keeping the current hardware version");
+            }
+            return vm;
         } catch (Throwable e) {
-            s_logger.error(String.format("Error cloning VM from template in primary storage: %s", e.getMessage()), e);
-            throw new CloudRuntimeException(String.format("Unable to find template %s in vSphere", templateName));
+            String msg = "Error cloning VM from template in primary storage: %s" + e.getMessage();
+            s_logger.error(msg, e);
+            throw new CloudRuntimeException(msg, e);
         }
     }
 }
