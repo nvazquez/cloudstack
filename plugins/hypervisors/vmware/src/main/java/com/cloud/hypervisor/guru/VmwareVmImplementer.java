@@ -250,17 +250,19 @@ class VmwareVmImplementer {
 
     private void setDetails(VirtualMachineTO to, Map<String, String> details) {
         Map<String, String> detailsToSend = new HashMap<>();
-        if (LOGGER.isTraceEnabled()) {
-            for (String key: details.keySet()) {
-                if (key.startsWith(ImageStore.OVF_EULA_SECTION_PREFIX) ||
-                        key.startsWith(ImageStore.OVF_HARDWARE_CONFIGURATION_PREFIX) ||
-                        key.startsWith(ImageStore.OVF_HARDWARE_ITEM_PREFIX)) {
+        for (String key: details.keySet()) {
+            if (key.startsWith(ImageStore.OVF_EULA_SECTION_PREFIX) ||
+                    key.startsWith(ImageStore.OVF_HARDWARE_CONFIGURATION_PREFIX) ||
+                    key.startsWith(ImageStore.OVF_HARDWARE_ITEM_PREFIX)) {
+                if (LOGGER.isTraceEnabled()) {
                     LOGGER.trace(String.format("Discarding detail for VM %s: %s => %s", to.getName(), key, details.get(key)));
-                    continue;
                 }
-                LOGGER.trace(String.format("Detail for VM %s: %s => %s",to.getName(), key, details.get(key)));
-                detailsToSend.put(key, details.get(key));
+                continue;
             }
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace(String.format("Detail for VM %s: %s => %s", to.getName(), key, details.get(key)));
+            }
+            detailsToSend.put(key, details.get(key));
         }
         to.setDetails(detailsToSend);
     }
