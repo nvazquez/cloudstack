@@ -27,7 +27,7 @@ from marvin.cloudstackAPI import (recoverVirtualMachine,
                                   migrateVirtualMachine,
                                   migrateVirtualMachineWithVolume,
                                   unmanageVirtualMachine,
-                                  listUnmanagedInstances
+                                  listUnmanagedInstances,
                                   listNics,
                                   listVolumes)
 from marvin.lib.utils import *
