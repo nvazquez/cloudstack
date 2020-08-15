@@ -883,7 +883,7 @@ public class NetworkOrchestrator extends ManagerBase implements NetworkOrchestra
                 }
 
                 List<NetworkPrerequisiteTO> netprereqs = templateDetailsDao.listNetworkRequirementsByTemplateId(vm.getTemplate().getId());
-                // FR37 hack: add last network untill enough ids
+                // hack: add last network untill enough ids
                 if (size < netprereqs.size()) {
                     size = netprereqs.size();
                 }

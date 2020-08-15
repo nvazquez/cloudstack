@@ -120,10 +120,7 @@ class VmwareVmImplementer {
         to.setBootloader(VirtualMachineTemplate.BootloaderType.HVM);
         boolean deployAsIs = vm.getTemplate().isDeployAsIs();
         HostVO host = hostDao.findById(vm.getVirtualMachine().getHostId());
-        // FR37 if VmwareImplementAsIsAndReconsiliate add secondary storage or some other encoding of the OVA file to the start command,
-        // FR37 so the url for the original OVA can be used for deployment
         if (deployAsIs) {
-            // FR37 we need to make sure the primary storage for the template is known and whether this is a new deployment
             storeTemplateLocationInTO(vm, to, host.getId());
         }
         Map<String, String> details = to.getDetails();
@@ -195,8 +192,6 @@ class VmwareVmImplementer {
         List<OVFPropertyTO> ovfProperties = getOvfPropertyList(vm, details);
         handleOvfProperties(vm, to, details, ovfProperties);
 
-        // FR37 TODO add required nics here or let the start executor copy them from the base template?
-
         setDetails(to, details);
 
         return to;
@@ -222,7 +217,6 @@ class VmwareVmImplementer {
     }
 
     private void createDiskTOForTemplateOVA(VirtualMachineProfile vm, StoragePoolVO storagePoolVO) {
-        // FR37 store template in diskto with the pool as location
         DiskTO disk = new DiskTO();
         TemplateObjectTO data = new TemplateObjectTO(vm.getTemplate());
         DataStoreTO store = new DataStoreTO() {
@@ -384,7 +378,7 @@ class VmwareVmImplementer {
         List<DiskTO> rootDiskList;
         rootDiskList = vm.getDisks().stream().filter(x -> x.getType() == Volume.Type.ROOT).collect(Collectors.toList());
         if (rootDiskList.size() != 1) {
-            if (vm.getTemplate().isDeployAsIs()) { // FR37 dirty hack to avoid ISOs, the start command should have added a root disk to
+            if (vm.getTemplate().isDeployAsIs()) {
                 rootDiskList = vm.getDisks().stream().filter(x -> x.getType() == null).collect(Collectors.toList());
                 if (rootDiskList.size() < 1) {
                     throw new CloudRuntimeException("Did not find a template to serve as root disk for VM " + vm.getHostName());

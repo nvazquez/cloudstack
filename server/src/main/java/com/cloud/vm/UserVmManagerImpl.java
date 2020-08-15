@@ -4043,7 +4043,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
     }
 
     private void copyNetworkRequirementsToVm(UserVmVO vm, VirtualMachineTemplate template) {
-        if (template.isDeployAsIs()) { // FR37 should be always when we are done
+        if (template.isDeployAsIs()) {
             List<VMTemplateDetailVO> details = templateDetailsDao.listDetailsByTemplateIdMatchingPrefix(template.getId(), ImageStore.REQUIRED_NETWORK_PREFIX);
             for (VMTemplateDetailVO detail : details) {
                 vm.setDetail(detail.getName(), detail.getValue());
@@ -4052,7 +4052,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
     }
 
     private void copyDiskDetailsToVm(UserVmVO vm, VirtualMachineTemplate template) {
-        if (template.isDeployAsIs()) { // FR37 should be always when we are done
+        if (template.isDeployAsIs()) {
             List<VMTemplateDetailVO> details = templateDetailsDao.listDetailsByTemplateIdMatchingPrefix(template.getId(), ImageStore.DISK_DEFINITION_PREFIX);
             for (VMTemplateDetailVO detail : details) {
                 vm.setDetail(detail.getName(), detail.getValue());
