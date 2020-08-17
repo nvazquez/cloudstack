@@ -39,16 +39,16 @@ package org.apache.cloudstack.api.net;
  * {code}
  */
 public class NetworkPrerequisiteTO {
-    String name; // attribute on Network should match <rasd:Connection> on Item (virtual hardware)
+    String name;
     String networkDescription;
 
-    int addressOnParent; // or String?
+    int addressOnParent;
     boolean automaticAllocation;
     String nicDescription;
     String elementName;
-    int InstanceID; // or String?
+    int InstanceID;
     String resourceSubType;
-    String resourceType; // or int?
+    String resourceType;
 
     public int getAddressOnParent() {
         return addressOnParent;

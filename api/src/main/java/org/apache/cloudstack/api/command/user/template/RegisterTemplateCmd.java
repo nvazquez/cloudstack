@@ -164,7 +164,7 @@ public class RegisterTemplateCmd extends BaseCmd implements UserCmd {
 
     @Parameter(name= ApiConstants.DEPLOY_AS_IS,
             type = CommandType.BOOLEAN,
-            description = "true if template should not strip and define disks and networks but leave those to the template definition",
+            description = "VMware only: true if template should not strip and define disks and networks but leave those to the template definition",
             since = "4.15"
     )
     private Boolean deployAsIs;

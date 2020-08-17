@@ -1932,8 +1932,6 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
                 hackDeviceCount += diskInfoBuilder.getDiskCount();
             }
             hackDeviceCount += nicDevices == null ? 0 : nicDevices.length;
-            // vApp cdrom device
-            // HACK ALERT: ovf properties might not be the only or defining feature of vApps; needs checking
             if (s_logger.isTraceEnabled()) {
                 s_logger.trace(String.format("current count(s) desired: %d/ found:%d. now adding device to device count for vApp config ISO", totalChangeDevices, hackDeviceCount));
             }

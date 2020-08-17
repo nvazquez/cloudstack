@@ -2495,7 +2495,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
                     if (s_logger.isTraceEnabled()) {
                         s_logger.trace(String.format("looking for vm detail '%s'", detailName));
                     }
-                    if (detailName.startsWith(ApiConstants.ACS_PROPERTY)) {
+                    if (detailName.startsWith(ImageStore.ACS_PROPERTY_PREFIX)) {
                         OVFPropertyTO propertyTO = templateDetailsDao.findPropertyByTemplateAndKey(vmInstance.getTemplateId(),detailName);
                         if (propertyTO != null && propertyTO.isPassword()) {
                             details.put(detailName, DBEncryptionUtil.encrypt(details.get(detailName)));
@@ -4068,7 +4068,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
     private void setPropertiesOnVM(UserVmVO vm, Map<String, String> userVmOVFPropertiesMap) {
         if (MapUtils.isNotEmpty(userVmOVFPropertiesMap)) {
             for (String key : userVmOVFPropertiesMap.keySet()) {
-                String detailKey = ApiConstants.ACS_PROPERTY + "-" + key;
+                String detailKey = ImageStore.ACS_PROPERTY_PREFIX + key;
                 String value = userVmOVFPropertiesMap.get(key);
 
                 // Sanitize boolean values to expected format and encrypt passwords

@@ -230,7 +230,7 @@ public class DeployVMCmd extends BaseAsyncCreateCustomIdCmd implements SecurityG
     private Map vAppProperties;
 
     @Parameter(name = ApiConstants.NIC_NETWORK_LIST, type = CommandType.MAP, since = "4.15",
-            description = "used to specify the vApp network mapping." +
+            description = "VMware only: used to specify network mapping of a vApp VMware template registered \"as-is\"." +
                     " Example nicnetworklist[0].ip=Nic-101&nicnetworklist[0].network=uuid")
     @LogLevel(LogLevel.Log4jLevel.Off)
     private Map vAppNetworks;

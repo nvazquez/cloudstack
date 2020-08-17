@@ -85,10 +85,11 @@ public class OVFHelper {
     }
 
     /**
-     * Get the text value of a node's child with name "childNodeName", null if not present
+     * Get the text value of a node's child with name or suffix "childNodeName", null if not present
      * Example:
      * <Node>
      *    <childNodeName>Text value</childNodeName>
+     *    <rasd:childNodeName>Text value</rasd:childNodeName>
      * </Node>
      */
     private String getChildNodeValue(Node node, String childNodeName) {
@@ -215,13 +216,15 @@ public class OVFHelper {
      *
      */
     private void moveFirstIsoToEndOfDiskList(List<DatadiskTO> diskTOs) {
-        DatadiskTO fd = diskTOs.get(0);
-        if (fd.isIso()) {
-            if (s_logger.isDebugEnabled()) {
-                s_logger.debug("moving first disk to the end as it is an ISO");
+        if (CollectionUtils.isNotEmpty(diskTOs)) {
+            DatadiskTO fd = diskTOs.get(0);
+            if (fd.isIso()) {
+                if (s_logger.isDebugEnabled()) {
+                    s_logger.debug("moving first disk to the end as it is an ISO");
+                }
+                diskTOs.remove(0);
+                diskTOs.add(fd);
             }
-            diskTOs.remove(0);
-            diskTOs.add(fd);
         }
     }
 
@@ -536,36 +539,40 @@ public class OVFHelper {
 
     /**
      * get all the stuff from parent node
-     * TODO check for completeness and optionality
      *
      * @param nic the object to carry through the system
      * @param parentNode the xml container node for nic data
      */
     private void fillNicPrerequisites(NetworkPrerequisiteTO nic, Node parentNode) {
-//     *   <rasd:AddressOnParent>7</rasd:AddressOnParent>
+        String addressOnParentStr = getChildNodeValue(parentNode, "AddressOnParent");
+        String automaticAllocationStr = getChildNodeValue(parentNode, "AutomaticAllocation");
+        String description = getChildNodeValue(parentNode, "Description");
+        String elementName = getChildNodeValue(parentNode, "ElementName");
+        String instanceIdStr = getChildNodeValue(parentNode, "InstanceID");
+        String resourceSubType = getChildNodeValue(parentNode, "ResourceSubType");
+        String resourceType = getChildNodeValue(parentNode, "ResourceType");
+
         try {
-            nic.setAddressOnParent(Integer.parseInt(getChildNodeValue(parentNode, "rasd:AddressOnParent")));
+            int addressOnParent = Integer.parseInt(addressOnParentStr);
+            nic.setAddressOnParent(addressOnParent);
         } catch (NumberFormatException e) {
-            s_logger.warn("encountered element of type \"rasd:AddressOnParent\", that could not be parse to an integer number: " + getChildNodeValue(parentNode, "rasd:AddressOnParent"));
+            s_logger.warn("Encountered element of type \"AddressOnParent\", that could not be parse to an integer number: " + addressOnParentStr);
         }
-//     *   <rasd:AutomaticAllocation>true</rasd:AutomaticAllocation>
-        nic.setAutomaticAllocation(Boolean.parseBoolean(getChildNodeValue(parentNode, "rasd:AutomaticAllocation")));
-//     *   <rasd:Connection>Management0-0</rasd:Connection>
-        // covoured in parent
-//     *   <rasd:Description>E1000 Ethernet adapter on "Management Network"</rasd:Description>
-        nic.setNicDescription(getChildNodeValue(parentNode, "rasd:Description"));
-//     *   <rasd:ElementName>Network adapter 1</rasd:ElementName>
-        nic.setElementName(getChildNodeValue(parentNode, "rasd:ElementName"));
-//     *   <rasd:InstanceID>6</rasd:InstanceID>
+
+        boolean automaticAllocation = StringUtils.isNotBlank(automaticAllocationStr) && Boolean.parseBoolean(automaticAllocationStr);
+        nic.setAutomaticAllocation(automaticAllocation);
+        nic.setNicDescription(description);
+        nic.setElementName(elementName);
+
         try {
-            nic.setInstanceID(Integer.parseInt(getChildNodeValue(parentNode, "rasd:InstanceID")));
+            int instanceId = Integer.parseInt(instanceIdStr);
+            nic.setInstanceID(instanceId);
         } catch (NumberFormatException e) {
-            s_logger.warn("encountered element of type \"rasd:InstanceID\", that could not be parse to an integer number: " + getChildNodeValue(parentNode, "rasd:InstanceID"));
+            s_logger.warn("Encountered element of type \"InstanceID\", that could not be parse to an integer number: " + instanceIdStr);
         }
-//     *   <rasd:ResourceSubType>E1000</rasd:ResourceSubType>
-        nic.setResourceSubType(getChildNodeValue(parentNode, "rasd:ResourceSubType"));
-//     *   <rasd:ResourceType>10</rasd:ResourceType>
-        nic.setResourceType(getChildNodeValue(parentNode, "rasd:ResourceType"));
+
+        nic.setResourceSubType(resourceSubType);
+        nic.setResourceType(resourceType);
     }
 
     private void checkForOnlyOneSystemNode(Document doc) throws InternalErrorException {
