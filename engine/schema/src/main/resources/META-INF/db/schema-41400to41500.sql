@@ -186,7 +186,8 @@ INSERT INTO `cloud`.`roles` (`uuid`, `name`, `role_type`, `description`, `is_def
 -- Add passthrough instruction for appliance deployments
 ALTER TABLE `cloud`.`vm_template` ADD COLUMN `deploy_as_is` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'True if the template should be deployed with disks and networks as defined by OVF';
 
-ALTER TABLE `cloud`.`vm_template_details` MODIFY COLUMN `value` varchar(8192) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL;
+-- Extend the template details value field
+ALTER TABLE `cloud`.`vm_template_details` MODIFY COLUMN `value` TEXT CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL;
 
 -- Changes to template_view for both deploying multidisk OVA/vApp as is
 DROP VIEW IF EXISTS `cloud`.`template_view`;
@@ -296,9 +297,6 @@ CREATE VIEW `cloud`.`template_view` AS
              OR (`resource_tags`.`resource_type` = 'ISO')))));
 
 DROP TABLE IF EXISTS `cloud`.`template_ovf_properties`;
-
--- Extend the template details value field
-ALTER TABLE `cloud`.`vm_template_details` CHANGE COLUMN `value` `value` TEXT NOT NULL ;
 
 -- mysql8 nics table fix for newer distributions
 ALTER TABLE `cloud`.`nics` MODIFY COLUMN update_time timestamp DEFAULT CURRENT_TIMESTAMP;
