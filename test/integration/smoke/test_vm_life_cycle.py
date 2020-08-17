@@ -46,8 +46,8 @@ from marvin.lib.base import (Account,
                              Network)
 from marvin.lib.common import (get_domain,
                                get_zone,
-                               get_template,
                                get_test_ovf_templates,
+                               get_suitable_test_template,
                                list_hosts,
                                list_virtual_machines,
                                get_vm_vapp_configs)
@@ -74,6 +74,7 @@ class TestDeployVM(cloudstackTestCase):
         cls.domain = get_domain(cls.apiclient)
         cls.zone = get_zone(cls.apiclient, testClient.getZoneForTests())
         cls.services['mode'] = cls.zone.networktype
+        cls.hypervisor = testClient.getHypervisorInfo()
 
         # If local storage is enabled, alter the offerings to use localstorage
         # this step is needed for devcloud
@@ -82,13 +83,14 @@ class TestDeployVM(cloudstackTestCase):
             cls.services["service_offerings"]["small"]["storagetype"] = 'local'
             cls.services["service_offerings"]["medium"]["storagetype"] = 'local'
 
-        template = get_template(
+        template = get_suitable_test_template(
             cls.apiclient,
             cls.zone.id,
-            cls.services["ostype"]
+            cls.services["ostype"],
+            cls.hypervisor
         )
         if template == FAILED:
-            assert False, "get_template() failed to return template with description %s" % cls.services["ostype"]
+            assert False, "get_suitable_test_template() failed to return template with description %s" % cls.services["ostype"]
 
         # Set Zones and disk offerings
         cls.services["small"]["zoneid"] = cls.zone.id
@@ -292,13 +294,14 @@ class TestVMLifeCycle(cloudstackTestCase):
             cls.services["service_offerings"]["small"]["storagetype"] = 'local'
             cls.services["service_offerings"]["medium"]["storagetype"] = 'local'
 
-        template = get_template(
+        template = get_suitable_test_template(
             cls.apiclient,
             cls.zone.id,
-            cls.services["ostype"]
+            cls.services["ostype"],
+            cls.hypervisor
         )
         if template == FAILED:
-            assert False, "get_template() failed to return template with description %s" % cls.services["ostype"]
+            assert False, "get_suitable_test_template() failed to return template with description %s" % cls.services["ostype"]
 
         # Set Zones and disk offerings
         cls.services["small"]["zoneid"] = cls.zone.id
@@ -740,62 +743,69 @@ class TestVMLifeCycle(cloudstackTestCase):
         except Exception as e:
             self.fail("SSH failed for virtual machine: %s - %s" %
                       (self.virtual_machine.ipaddress, e))
-
         mount_dir = "/mnt/tmp"
         cmds = "mkdir -p %s" % mount_dir
         self.assert_(ssh_client.execute(cmds) == [], "mkdir failed within guest")
 
+        iso_unsupported = False
         for diskdevice in self.services["diskdevice"]:
             res = ssh_client.execute("mount -rt iso9660 {} {}".format(diskdevice, mount_dir))
             if res == []:
                 self.services["mount"] = diskdevice
                 break
+            if str(res).find("mount: unknown filesystem type 'iso9660'") != -1:
+                iso_unsupported = True
+                self.debug("Test template does not supports iso9660 filesystem. Proceeding with test without mounting.")
+                print "Test template does not supports iso9660 filesystem. Proceeding with test without mounting."
+                break
         else:
             self.fail("No mount points matched. Mount was unsuccessful")
 
-        c = "mount |grep %s|head -1" % self.services["mount"]
-        res = ssh_client.execute(c)
-        size = ssh_client.execute("du %s | tail -1" % self.services["mount"])
-        self.debug("Found a mount point at %s with size %s" % (res, size))
+        if iso_unsupported == False:
+            c = "mount |grep %s|head -1" % self.services["mount"]
+            res = ssh_client.execute(c)
+            size = ssh_client.execute("du %s | tail -1" % self.services["mount"])
+            self.debug("Found a mount point at %s with size %s" % (res, size))
 
-        # Get ISO size
-        iso_response = Iso.list(
-            self.apiclient,
-            id=iso.id
-        )
-        self.assertEqual(
-            isinstance(iso_response, list),
-            True,
-            "Check list response returns a valid list"
-        )
+            # Get ISO size
+            iso_response = Iso.list(
+                self.apiclient,
+                id=iso.id
+            )
+            self.assertEqual(
+                isinstance(iso_response, list),
+                True,
+                "Check list response returns a valid list"
+            )
 
-        try:
-            # Unmount ISO
-            command = "umount %s" % mount_dir
-            ssh_client.execute(command)
-        except Exception as e:
-            self.fail("SSH failed for virtual machine: %s - %s" %
-                      (self.virtual_machine.ipaddress, e))
+            try:
+                # Unmount ISO
+                command = "umount %s" % mount_dir
+                ssh_client.execute(command)
+            except Exception as e:
+                self.fail("SSH failed for virtual machine: %s - %s" %
+                          (self.virtual_machine.ipaddress, e))
 
         # Detach from VM
         cmd = detachIso.detachIsoCmd()
         cmd.virtualmachineid = self.virtual_machine.id
         self.apiclient.detachIso(cmd)
 
-        try:
-            res = ssh_client.execute(c)
-        except Exception as e:
-            self.fail("SSH failed for virtual machine: %s - %s" %
-                      (self.virtual_machine.ipaddress, e))
+        if iso_unsupported == False:
+            try:
+                res = ssh_client.execute(c)
+            except Exception as e:
+                self.fail("SSH failed for virtual machine: %s - %s" %
+                          (self.virtual_machine.ipaddress, e))
 
-        # Check if ISO is properly detached from VM (using fdisk)
-        result = self.services["mount"] in str(res)
+            # Check if ISO is properly detached from VM (using fdisk)
+            result = self.services["mount"] in str(res)
 
-        self.assertEqual(
-            result,
-            False,
-            "Check if ISO is detached from virtual machine"
-        )
+            self.assertEqual(
+                result,
+                False,
+                "Check if ISO is detached from virtual machine"
+            )
         return
 
     @attr(tags = ["devcloud", "advanced", "advancedns", "smoke", "basic", "sg"], required_hardware="false")
@@ -856,13 +866,14 @@ class TestSecuredVmMigration(cloudstackTestCase):
             0].__dict__
         cls.management_ip = cls.config.__dict__["mgtSvr"][0].__dict__["mgtSvrIp"]
 
-        template = get_template(
+        template = get_suitable_test_template(
             cls.apiclient,
             cls.zone.id,
-            cls.services["ostype"]
+            cls.services["ostype"],
+            cls.hypervisor
         )
         if template == FAILED:
-            assert False, "get_template() failed to return template with description %s" % cls.services["ostype"]
+            assert False, "get_suitable_test_template() failed to return template with description %s" % cls.services["ostype"]
 
         # Set Zones and disk offerings
         cls.services["small"]["zoneid"] = cls.zone.id
@@ -1128,13 +1139,14 @@ class TestMigrateVMwithVolume(cloudstackTestCase):
             0].__dict__
         cls.management_ip = cls.config.__dict__["mgtSvr"][0].__dict__["mgtSvrIp"]
 
-        template = get_template(
+        template = get_suitable_test_template(
             cls.apiclient,
             cls.zone.id,
-            cls.services["ostype"]
+            cls.services["ostype"],
+            cls.hypervisor
         )
         if template == FAILED:
-            assert False, "get_template() failed to return template with description %s" % cls.services["ostype"]
+            assert False, "get_suitable_test_template() failed to return template with description %s" % cls.services["ostype"]
 
         # Set Zones and disk offerings
         cls.services["small"]["zoneid"] = cls.zone.id
@@ -1340,13 +1352,14 @@ class TestKVMLiveMigration(cloudstackTestCase):
             0].__dict__
         cls.management_ip = cls.config.__dict__["mgtSvr"][0].__dict__["mgtSvrIp"]
 
-        template = get_template(
+        template = get_suitable_test_template(
             cls.apiclient,
             cls.zone.id,
-            cls.services["ostype"]
+            cls.services["ostype"],
+            cls.hypervisor
         )
         if template == FAILED:
-            assert False, "get_template() failed to return template with description %s" % cls.services["ostype"]
+            assert False, "get_suitable_test_template() failed to return template with description %s" % cls.services["ostype"]
 
         # Set Zones and disk offerings
         cls.services["small"]["zoneid"] = cls.zone.id
@@ -1539,15 +1552,14 @@ class TestUnmanageVM(cloudstackTestCase):
         cls.domain = get_domain(cls.apiclient)
         cls.zone = get_zone(cls.apiclient, cls.testClient.getZoneForTests())
         cls.services['mode'] = cls.zone.networktype
-
-        cls.template = get_template(
+        cls.template = get_suitable_test_template(
             cls.apiclient,
             cls.zone.id,
             cls.services["ostype"],
-            hypervisor=cls.hypervisor.lower()
+            cls.hypervisor
         )
         if cls.template == FAILED:
-            assert False, "get_template() failed to return template with description %s" % cls.services["ostype"]
+            assert False, "get_suitable_test_template() failed to return template with description %s" % cls.services["ostype"]
 
         cls.hypervisorNotSupported = cls.hypervisor.lower() != "vmware"
 
@@ -1943,3 +1955,4 @@ class TestVAppsVM(cloudstackTestCase):
             cmd = destroyVirtualMachine.destroyVirtualMachineCmd()
             cmd.id = vm.id
             self.apiclient.destroyVirtualMachine(cmd)
+
