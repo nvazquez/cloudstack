@@ -669,7 +669,7 @@ public class OVFHelper {
             Node node = childNodes.item(i);
             if (node != null && node.getNodeName().equals("Item")) {
                 Element configuration = (Element) node;
-                String configurationIds = configuration.getAttribute("ovf:configuration");
+                String configurationIds = configuration.getAttribute("configuration");
                 String allocationUnits = getChildNodeValue(configuration, "AllocationUnits");
                 String description = getChildNodeValue(configuration, "Description");
                 String elementName = getChildNodeValue(configuration, "ElementName");
