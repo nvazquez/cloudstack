@@ -58,6 +58,14 @@ public class TemplateOVFPropertyResponse extends BaseResponse {
     @Param(description = "the ovf property label")
     private String description;
 
+    @SerializedName(ApiConstants.INDEX)
+    @Param(description = "the ovf property index")
+    private Integer index;
+
+    @SerializedName(ApiConstants.CATEGORY)
+    @Param(description = "the ovf property category")
+    private String category;
+
     @Override
     public boolean equals(Object other) {
         if (!(other instanceof TemplateOVFPropertyResponse)) {
@@ -133,5 +141,21 @@ public class TemplateOVFPropertyResponse extends BaseResponse {
 
     public void setPassword(Boolean password) {
         this.password = password;
+    }
+
+    public Integer getIndex() {
+        return index;
+    }
+
+    public void setIndex(Integer index) {
+        this.index = index;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 }

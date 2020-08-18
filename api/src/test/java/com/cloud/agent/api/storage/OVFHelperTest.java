@@ -382,6 +382,313 @@ public class OVFHelperTest {
             "</EulaSection>\n" +
             "</VirtualSystem>";
 
+    private String productSectionWithCategories =
+            "<VirtualSystem ovf:id=\"VMware-vCenter-Server-Appliance\">\n" +
+            "<ProductSection ovf:required=\"false\">\n" +
+            "      <Info>Appliance ISV branding information</Info>\n" +
+            "      <Product>VMware vCenter Server Appliance</Product>\n" +
+            "      <Vendor>VMware Inc.</Vendor>\n" +
+            "      <!--\n" +
+            "            Version is the actual product version in the\n" +
+            "            form X.X.X.X where X is an unsigned 16-bit integer.\n" +
+            "\n" +
+            "            FullVersion is a descriptive version string\n" +
+            "            including, for example, alpha or beta designations\n" +
+            "            and other release criteria.\n" +
+            "        -->\n" +
+            "\n" +
+            "\n" +
+            "      <Version>6.7.0.44000</Version>\n" +
+            "      <FullVersion>6.7.0.44000 build 16046470</FullVersion>\n" +
+            "      <ProductUrl/>\n" +
+            "      <VendorUrl>http://www.vmware.com</VendorUrl>\n" +
+            "      <AppUrl>https://${vami.ip0.VMware_vCenter_Server_Appliance}:5480/</AppUrl>\n" +
+            "      <Category>Application</Category>\n" +
+            "      <Category vmw:uioptional=\"false\">Networking Configuration</Category>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.appliance.net.addr.family\" ovf:type=\"string\" ovf:userConfigurable=\"true\" ovf:value=\"\">\n" +
+            "        <Label>Host Network IP Address Family</Label>\n" +
+            "        <Description>Network IP address family (i.e., &apos;ipv4&apos; or &apos;ipv6&apos;).</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.appliance.net.mode\" ovf:type=\"string\" ovf:userConfigurable=\"true\" ovf:value=\"\">\n" +
+            "        <Label>Host Network Mode</Label>\n" +
+            "        <Description>Network mode (i.e., &apos;static&apos;, &apos;dhcp&apos;, or &apos;autoconf&apos; (IPv6 only).</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.appliance.net.addr\" ovf:type=\"string\" ovf:userConfigurable=\"true\" ovf:value=\"\">\n" +
+            "        <Label>Host Network IP Address</Label>\n" +
+            "        <Description>Network IP address.  Only provide this when mode is &apos;static&apos;.  Can be IPv4 or IPv6 based on specified address family.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.appliance.net.prefix\" ovf:type=\"string\" ovf:userConfigurable=\"true\" ovf:value=\"\">\n" +
+            "        <Label>Host Network Prefix</Label>\n" +
+            "        <Description>Network prefix length.  Only provide this when mode is &apos;static&apos;.  0-32 for IPv4.  0-128 for IPv6.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.appliance.net.gateway\" ovf:type=\"string\" ovf:userConfigurable=\"true\" ovf:value=\"\">\n" +
+            "        <Label>Host Network Default Gateway</Label>\n" +
+            "        <Description>IP address of default gateway.  Can be &apos;default&apos; when using IPv6.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.appliance.net.dns.servers\" ovf:type=\"string\" ovf:userConfigurable=\"true\" ovf:value=\"\">\n" +
+            "        <Label>Host Network DNS Servers</Label>\n" +
+            "        <Description>Comma separated list of IP addresses of DNS servers.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.appliance.net.pnid\" ovf:type=\"string\" ovf:userConfigurable=\"true\" ovf:value=\"\">\n" +
+            "        <Label>Host Network Identity</Label>\n" +
+            "        <Description>Network identity (IP address or fully-qualified domain name) services should use when advertising themselves.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.appliance.net.ports\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"{}\">\n" +
+            "        <Label>Custom Network Ports</Label>\n" +
+            "        <Description>A string encoding a JSON object mapping port names to port numbers.</Description>\n" +
+            "      </Property>\n" +
+            "      <Category vmw:uioptional=\"false\">SSO Configuration</Category>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vmdir.username\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"administrator@vsphere.local\">\n" +
+            "        <Label>Directory Username</Label>\n" +
+            "        <Description>For the first instance of the identity domain, this is the username with Administrator privileges. Otherwise, this is the username of the replication partner.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vmdir.password\" ovf:password=\"true\" ovf:type=\"string\" ovf:userConfigurable=\"true\">\n" +
+            "        <Label>Directory Password</Label>\n" +
+            "        <Description>For the first instance of the identity domain, this is the password given to the Administrator account.  Otherwise, this is the password of the Administrator account of the replication partner.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vmdir.domain-name\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"vsphere.local\">\n" +
+            "        <Label>Directory Domain Name</Label>\n" +
+            "        <Description>For the first instance of the identity domain, this is the name of the newly created domain.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vmdir.site-name\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"Default-First-Site\">\n" +
+            "        <Label>Site Name</Label>\n" +
+            "        <Description>Name of site.  Use &apos;Default-First-Site&apos; to define a new site.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vmdir.first-instance\" ovf:type=\"boolean\" ovf:userConfigurable=\"false\" ovf:value=\"True\">\n" +
+            "        <Label>New Identity Domain</Label>\n" +
+            "        <Description>If this parameter is set to True, the VMware directory instance is setup as the first instance of a new identity domain. Otherwise, the instance is setup as a replication partner.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vmdir.replication-partner-hostname\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Directory Replication Partner</Label>\n" +
+            "        <Description>The hostname of the VMware directory replication partner.  This value is ignored for the first instance of the identity domain.</Description>\n" +
+            "      </Property>\n" +
+            "      <Category vmw:uioptional=\"false\">Database Configuration</Category>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.db.type\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"embedded\">\n" +
+            "        <Label>Database Type</Label>\n" +
+            "        <Description>String indicating whether the database is &apos;embedded&apos; or &apos;external&apos;.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.db.user\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Database User</Label>\n" +
+            "        <Description>String naming the account to use when connecting to external database (ignored when db.type is &apos;embedded&apos;).</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.db.password\" ovf:password=\"true\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Database Password</Label>\n" +
+            "        <Description>String providing the password to use when connecting to external database (ignored when db.type is &apos;embedded&apos;).</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.db.servername\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Database Server</Label>\n" +
+            "        <Description>String naming the the hostname of the server on which the external database is running (ignored when db.type is &apos;embedded&apos;).</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.db.serverport\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Database Port</Label>\n" +
+            "        <Description>String describing the port on the host on which the external database is running (ignored when db.type is &apos;embedded&apos;).</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.db.provider\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Database Provider</Label>\n" +
+            "        <Description>String describing the external database provider. The only supported value is &apos;oracle&apos; (ignored when the db.type is &apos;embedded&apos;).</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.db.instance\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Database Instance</Label>\n" +
+            "        <Description>String describing the external database instance. Values could be anything depending on what the database instance name the DBA creates in the external db. (ignored when the db.type is &apos;embedded&apos;).</Description>\n" +
+            "      </Property>\n" +
+            "      <Category vmw:uioptional=\"false\">System Configuration</Category>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.appliance.root.passwd\" ovf:password=\"true\" ovf:type=\"string\" ovf:userConfigurable=\"true\">\n" +
+            "        <Label>Root Password</Label>\n" +
+            "        <Description>Password to assign to root account.  If blank, password can be set on the console.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.appliance.root.shell\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Root Shell</Label>\n" +
+            "        <Description>This property is not changeable.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.appliance.ssh.enabled\" ovf:type=\"boolean\" ovf:userConfigurable=\"false\" ovf:value=\"False\">\n" +
+            "        <Label>SSH Enabled</Label>\n" +
+            "        <Description>Set whether SSH-based remote login is enabled.  This configuration can be changed after deployment.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.appliance.time.tools-sync\" ovf:type=\"boolean\" ovf:userConfigurable=\"false\" ovf:value=\"False\">\n" +
+            "        <Label>Tools-based Time Synchronization Enabled</Label>\n" +
+            "        <Description>Set whether VMware tools based time synchronization should be used. This parameter is ignored if appliance.ntp.servers is not empty.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.appliance.ntp.servers\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>NTP Servers</Label>\n" +
+            "        <Description>A comma-seperated list of hostnames or IP addresses of NTP Servers</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.deployment.node.type\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"embedded\">\n" +
+            "        <Label>Deployment Type</Label>\n" +
+            "        <Description>Type of appliance to deploy (i.e. &apos;embedded&apos;, &apos;infrastructure&apos; or &apos;management&apos;).</Description>\n" +
+            "        <Value ovf:configuration=\"management-xlarge\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"management-large\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"management-medium\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"management-small\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"management-tiny\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"management-xlarge-lstorage\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"management-large-lstorage\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"management-medium-lstorage\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"management-small-lstorage\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"management-tiny-lstorage\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"management-xlarge-xlstorage\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"management-large-xlstorage\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"management-medium-xlstorage\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"management-small-xlstorage\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"management-tiny-xlstorage\" ovf:value=\"management\"/>\n" +
+            "        <Value ovf:configuration=\"infrastructure\" ovf:value=\"infrastructure\"/>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.system.vm0.hostname\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Platform Services Controller</Label>\n" +
+            "        <Description>When deploying a vCenter Server Node, please provide the FQDN or IP address of a Platform Services Controller (leave blank otherwise).  The choice of FQDN versus IP address is decided based on the Platform Services Controller&apos;s own notion of its network identity.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.system.vm0.port\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"443\">\n" +
+            "        <Label>HTTPS Port on Platform Services Controller</Label>\n" +
+            "        <Description>When deploying a vCenter Server pointing to an external platform services controller, please provide the HTTPS port of the external platform services controller if a custom port number is being used. The default HTTPS port number is 443.</Description>\n" +
+            "      </Property>\n" +
+            "      <Category vmw:uioptional=\"true\">Upgrade Configuration</Category>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.upgrade.source.vpxd.ip\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Upgrade Source Hostname</Label>\n" +
+            "        <Description>IP/hostname of the appliance to upgrade. Set only for upgrade.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.upgrade.source.ma.port\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"9123\">\n" +
+            "        <Label>Migration Assistant Port</Label>\n" +
+            "        <Description>Port used by Migration Assistant on source vCenter Server.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.upgrade.source.vpxd.user\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Upgrade Source vCenter Username</Label>\n" +
+            "        <Description>vCenter username for the appliance to upgrade. Set only for upgrade.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.upgrade.source.vpxd.password\" ovf:password=\"true\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Upgrade Source vCenter Password</Label>\n" +
+            "        <Description>vCenter password for the appliance to upgrade. Set only for upgrade.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.upgrade.source.guest.user\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Upgrade Source OS Username</Label>\n" +
+            "        <Description>Username for the appliance operating system to upgrade.  Usually root. Set only for upgrade.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.upgrade.source.guest.password\" ovf:password=\"true\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Upgrade Source OS Password</Label>\n" +
+            "        <Description>Password for the appliance operating system to upgrade. Set only for upgrade.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.upgrade.source.guestops.host.addr\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Upgrade Management Host Hostname</Label>\n" +
+            "        <Description>URL that consists of the IP address or FQDN and https port of the vCenter Server instance or ESXi host that manages the appliance to upgrade. Https port is an optional parameter which by default is 443. Example: 10.10.10.10, //10.10.10.10:444, //[2001:db8:a0b:12f0::1]:444. Set only for upgrade.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.upgrade.source.guestops.host.user\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Upgrade Management Host Username</Label>\n" +
+            "        <Description>Username for the host that manages appliance to upgrade.  Can be  either vCenter or ESX host.  Set only for upgrade.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.upgrade.source.guestops.host.password\" ovf:password=\"true\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Upgrade Management Host Password</Label>\n" +
+            "        <Description>Password for the host that manages appliance to upgrade.  Can be  either vCenter or ESX host.  Set only for upgrade.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.upgrade.source.ssl.thumbprint\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Upgrade Management Host Thumbprint</Label>\n" +
+            "        <Description>Thumbprint for the SSL certificate of the host that manages the appliance to upgrade. Set only for upgrade.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.upgrade.source.platform\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"linux\">\n" +
+            "        <Label>Upgrade Source Platform</Label>\n" +
+            "        <Description>Source host platform. Optional. Set only for upgrade</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.upgrade.source.export.directory\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"/var/tmp\">\n" +
+            "        <Label>Upgrade Source Export Folder</Label>\n" +
+            "        <Description>Folder on the source appliance, where to store migrate data. Optional. Set only for upgrade</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.upgrade.import.directory\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"/storage/seat/cis-export-folder\">\n" +
+            "        <Label>Upgrade Destination Export Folder</Label>\n" +
+            "        <Description>Folder where exported source data will be stored in the appliance. Optional. Set only for upgrade</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.upgrade.user.options\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Upgrade Advanced Options</Label>\n" +
+            "        <Description>Advanced upgrade settings specified in json format. Optional. Set only for upgrade</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.ad.domain-name\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Active Directory domain name</Label>\n" +
+            "        <Description>Active Directory domain to join.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.ad.domain.username\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Active Directory domain admin user</Label>\n" +
+            "        <Description>Active Directory domain admin user. This username will be used to join the machine to the domain.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.ad.domain.password\" ovf:password=\"true\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Active Directory domain admin user password</Label>\n" +
+            "        <Description>Active Directory domain admin user password. This password will be used to join the machine to the domain.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vpxd.ha.management.addr\" ovf:type=\"string\" ovf:userConfigurable=\"true\" ovf:value=\"\">\n" +
+            "        <Label>vCenter Server managing target appliance</Label>\n" +
+            "        <Description>FQDN or IP address of the vCenter Server managing that target appliance. Used when upgrading a source appliance in VCHA cluster.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vpxd.ha.management.port\" ovf:type=\"string\" ovf:userConfigurable=\"true\" ovf:value=\"443\">\n" +
+            "        <Label>Port of the vCenter Server managing target appliance</Label>\n" +
+            "        <Description>Https port of the vCenter Server managing that target appliance. Used when upgrading a source appliance in VCHA cluster. If not specified, port 443 will be used by default.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vpxd.ha.management.user\" ovf:type=\"string\" ovf:userConfigurable=\"true\" ovf:value=\"\">\n" +
+            "        <Label>Username for the vCenter Server managing target appliance</Label>\n" +
+            "        <Description>User able to authenticate in vCenter Server managing that target appliance. The user must have the privilege Global.VCServer. Used when upgrading a source appliance in VCHA cluster.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vpxd.ha.management.password\" ovf:password=\"true\" ovf:type=\"string\" ovf:userConfigurable=\"true\" ovf:value=\"\">\n" +
+            "        <Label>Password for the vCenter Server managing target appliance</Label>\n" +
+            "        <Description>Password for administrator user authenticating to the vCenter Server managing target appliance. Used when upgrading a source appliance in VCHA cluster.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vpxd.ha.management.thumbprint\" ovf:type=\"string\" ovf:userConfigurable=\"true\" ovf:value=\"\">\n" +
+            "        <Label>Thumbprint for the SSL certificate of the vCenter Server managing target appliance</Label>\n" +
+            "        <Description>Thumbprint for the SSL certificate of the host that manages the appliance to upgrade. Used when upgrading a source appliance in VCHA cluster.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vpxd.ha.placement\" ovf:type=\"string\" ovf:userConfigurable=\"true\" ovf:value=\"\">\n" +
+            "        <Label>Path to the compute resource where target appliance will be deployed on management vCenter Server</Label>\n" +
+            "        <Description>Path to host/cluster/resource pool where target appliance will be deployed on management vCenter Server. Used when upgrading a source appliance in VCHA cluster. Example: /my_datacenter/my_folder/my_host_or_cluster/my_resource_pool</Description>\n" +
+            "      </Property>\n" +
+            "      <Category vmw:uioptional=\"true\">Miscellaneous</Category>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.netdump.enabled\" ovf:type=\"boolean\" ovf:userConfigurable=\"false\" ovf:value=\"True\">\n" +
+            "        <Label>ESXi Dump Collector Enabled</Label>\n" +
+            "        <Description>Set whether ESXi Dump Collector service is enabled.  This configuration can be changed after deployment.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.silentinstall\" ovf:type=\"boolean\" ovf:userConfigurable=\"false\" ovf:value=\"False\">\n" +
+            "        <Label>Do Silent Install</Label>\n" +
+            "        <Description>If this parameter is set to True, no questions will be posted during install or upgrade. Otherwise, the install process will wait for a reply if there is a pending question.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.clientlocale\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"en\">\n" +
+            "        <Label>The Client Locale</Label>\n" +
+            "        <Description>This parameter specifies the client locale. Supported locales are en, fr, ja, ko, zh_CN and zh_TW. English is assumed if locale is unknown.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.feature.states\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>Feature switch states</Label>\n" +
+            "        <Description>Specify feature switch states which need to be added or modified in feature switch state config file. Format: key1=value1, key2=value2</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.ceip_enabled\" ovf:type=\"boolean\" ovf:userConfigurable=\"true\" ovf:value=\"False\">\n" +
+            "        <Label>CEIP enabled</Label>\n" +
+            "        <Description>VMware’s Customer Experience Improvement Program (&quot;CEIP&quot;) provides VMware with information that enables VMware to improve its products and services, to fix problems, and to advise you on how best to deploy and use our products. As part of the CEIP, VMware collects technical information about your organization’s use of VMware products and services on a regular basis in association with your organization’s VMware license key(s). This information does not personally identify any individual. For more details about the Program and how VMware uses the information it collects through CEIP, please see the product documentation at http://www.vmware.com/info?id=1399. If you want to participate in VMware’s CEIP for this product, set this property to True. You may join or leave VMware’s CEIP for this product at any time.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.deployment.autoconfig\" ovf:type=\"boolean\" ovf:userConfigurable=\"false\" ovf:value=\"False\">\n" +
+            "        <Label>Auto Start Services</Label>\n" +
+            "        <Description>If this parameter is set to True, the appliance will be configured after deployment using the specified OVF configuration parameters. If set to False, the appliance should be configured post-deployment using the VMware Appliance Management Interface.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vpxd.mac-allocation-scheme.prefix\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>MAC address allocation scheme prefix</Label>\n" +
+            "        <Description>If a valid MAC address prefix is provided, then all MAC addresses assigned by vCenter Server will begin with this prefix instead of the VMware OUI. This property cannot co-exist with mac-allocation-scheme.ranges</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vpxd.mac-allocation-scheme.prefix-length\" ovf:type=\"uint8\" ovf:userConfigurable=\"false\" ovf:value=\"0\">\n" +
+            "        <Label>MAC address allocation scheme prefix length</Label>\n" +
+            "        <Description>This property is mandatory whenever a custom MAC prefix is provided.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"guestinfo.cis.vpxd.mac-allocation-scheme.ranges\" ovf:type=\"string\" ovf:userConfigurable=\"false\" ovf:value=\"\">\n" +
+            "        <Label>MAC address allocation scheme ranges</Label>\n" +
+            "        <Description>If valid MAC address range is provided, then vCenter Server will assign MAC addresses from this range instead of allocating VMware OUI based MAC address. The address range must be provided in the format &quot;BeginAddress1-EndAddress1,...,BeginAddressN-EndAddressN&quot;. This property cannot co-exist with mac-allocation-scheme.prefix.</Description>\n" +
+            "      </Property>\n" +
+            "</ProductSection>\n" +
+            "<ProductSection ovf:class=\"vami\" ovf:instance=\"VMware-vCenter-Server-Appliance\" ovf:required=\"false\">\n" +
+            "      <Info>VAMI Properties</Info>\n" +
+            "      <Category>Networking Properties</Category>\n" +
+            "      <Property ovf:key=\"domain\" ovf:type=\"string\" ovf:userConfigurable=\"true\">\n" +
+            "        <Label>Domain Name</Label>\n" +
+            "        <Description>The domain name of this VM. Leave blank if DHCP is desired.</Description>\n" +
+            "      </Property>\n" +
+            "      <Property ovf:key=\"searchpath\" ovf:type=\"string\" ovf:userConfigurable=\"true\">\n" +
+            "        <Label>Domain Search Path</Label>\n" +
+            "        <Description>The domain search path (comma or space separated domain names) for this VM. Leave blank if DHCP is desired.</Description>\n" +
+            "      </Property>\n" +
+            "</ProductSection>\n" +
+            "<ProductSection ovf:class=\"vm\" ovf:required=\"false\">\n" +
+            "      <Info>VM specific properties</Info>\n" +
+            "      <Property ovf:key=\"vmname\" ovf:type=\"string\" ovf:value=\"VMware-vCenter-Server-Appliance\"/>\n" +
+            "</ProductSection>\n" +
+            "</VirtualSystem>";
+
     private OVFHelper ovfHelper = new OVFHelper();
 
     @Test
@@ -411,5 +718,11 @@ public class OVFHelperTest {
     public void testGetOVFEulaSectionValidOVF() throws IOException, SAXException, ParserConfigurationException {
         List<OVFEulaSectionTO> eulas = ovfHelper.getOVFEulaSectionFromXmlString(eulaSections);
         Assert.assertEquals(2, eulas.size());
+    }
+
+    @Test
+    public void testGetOVFPropertiesWithCategories() throws IOException, SAXException, ParserConfigurationException {
+        List<OVFPropertyTO> props = ovfHelper.getOVFPropertiesFromXmlString(productSectionWithCategories);
+        int a = 2;
     }
 }

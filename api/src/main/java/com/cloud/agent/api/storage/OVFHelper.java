@@ -48,6 +48,7 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.traversal.DocumentTraversal;
@@ -108,47 +109,93 @@ public class OVFHelper {
     }
 
     /**
+     * Check if the attribute is present on the element, otherwise check preprending ':'
+     */
+    private String getNodeAttribute(Element element, String prefix, String attr) {
+        if (element == null) {
+            return null;
+        }
+        if (element.hasAttribute(prefix + ":" + attr)) {
+            return element.getAttribute(prefix + ":" + attr);
+        }
+        else if (element.hasAttribute(attr)) {
+            return element.getAttribute(attr);
+        }
+
+        NamedNodeMap attributes = element.getAttributes();
+        if (attributes == null || attributes.getLength() == 0) {
+            return null;
+        }
+        for (int i = 0; i < attributes.getLength(); i++) {
+            Node node = attributes.item(i);
+            if (node != null && node.getNodeName().endsWith(":" + attr)) {
+                return node.getTextContent();
+            }
+        }
+        return null;
+    }
+
+    /**
      * Create OVFProperty class from the parsed node. Note that some fields may not be present.
      * The key attribute is required
      */
-    protected OVFPropertyTO createOVFPropertyFromNode(Node node) {
-        Element property = (Element) node;
-        String key = property.getAttribute("ovf:key");
+    protected OVFPropertyTO createOVFPropertyFromNode(Node node, int index, String category) {
+        Element element = (Element) node;
+        String key = getNodeAttribute(element, "ovf","key");
         if (StringUtils.isBlank(key)) {
             return null;
         }
 
-        String value = property.getAttribute("ovf:value");
-        String type = property.getAttribute("ovf:type");
-        String qualifiers = property.getAttribute("ovf:qualifiers");
-        String userConfigurableStr = property.getAttribute("ovf:userConfigurable");
+        String value = getNodeAttribute(element, "ovf","value");
+        String type = getNodeAttribute(element, "ovf","type");
+        String qualifiers = getNodeAttribute(element, "ovf","qualifiers");
+        String userConfigurableStr = getNodeAttribute(element, "ovf","userConfigurable");
         boolean userConfigurable = StringUtils.isNotBlank(userConfigurableStr) &&
                 userConfigurableStr.equalsIgnoreCase("true");
-        String passStr = property.getAttribute("ovf:password");
+        String passStr = getNodeAttribute(element, "ovf","password");
         boolean password = StringUtils.isNotBlank(passStr) && passStr.equalsIgnoreCase("true");
         String label = getChildNodeValue(node, "Label");
         String description = getChildNodeValue(node, "Description");
-        return new OVFPropertyTO(key, type, value, qualifiers, userConfigurable, label, description, password);
+        s_logger.debug("Creating OVF property index " + index + (category == null ? "" : " for category " + category)
+                + " with key = " + key);
+        return new OVFPropertyTO(key, type, value, qualifiers, userConfigurable,
+                label, description, password, index, category);
     }
 
     /**
-     * Retrieve OVF properties from a parsed OVF file, with attribute 'ovf:userConfigurable' set to true
+     * Retrieve OVF properties from a parsed OVF file including its category (if available) and in-order,
+     * with attribute 'ovf:userConfigurable' set to true.
      */
     public List<OVFPropertyTO> getConfigurableOVFPropertiesFromDocument(Document doc) {
         List<OVFPropertyTO> props = new ArrayList<>();
         if (doc == null) {
             return props;
         }
-        NodeList properties = doc.getElementsByTagName("Property");
-        if (properties != null) {
-            for (int i = 0; i < properties.getLength(); i++) {
-                Node node = properties.item(i);
+        int propertyIndex = 0;
+        NodeList productSections = doc.getElementsByTagName("ProductSection");
+        if (productSections != null) {
+            String lastCategoryFound = null;
+            for (int i = 0; i < productSections.getLength(); i++) {
+                Node node = productSections.item(i);
                 if (node == null) {
                     continue;
                 }
-                OVFPropertyTO prop = createOVFPropertyFromNode(node);
-                if (prop != null && prop.isUserConfigurable()) {
-                    props.add(prop);
+                NodeList childNodes = node.getChildNodes();
+                for (int j = 0; j < childNodes.getLength(); j++) {
+                    Node child = childNodes.item(j);
+                    if (child == null) {
+                        continue;
+                    }
+                    if (child.getNodeName().equalsIgnoreCase("Category")) {
+                        lastCategoryFound = child.getTextContent();
+                        s_logger.info("Category found " + lastCategoryFound);
+                    } else if (child.getNodeName().equalsIgnoreCase("Property")) {
+                        OVFPropertyTO prop = createOVFPropertyFromNode(child, propertyIndex, lastCategoryFound);
+                        if (prop != null && prop.isUserConfigurable()) {
+                            props.add(prop);
+                            propertyIndex++;
+                        }
+                    }
                 }
             }
         }
@@ -270,15 +317,14 @@ public class OVFHelper {
         for (int i = 0; i < disks.getLength(); i++) {
             Element disk = (Element)disks.item(i);
             OVFDisk od = new OVFDisk();
-            String virtualSize = disk.getAttribute("ovf:capacity");
+            String virtualSize = getNodeAttribute(disk, "ovf", "capacity");
             od._capacity = NumberUtils.toLong(virtualSize, 0L);
-            String allocationUnits = disk.getAttribute("ovf:capacityAllocationUnits");
-            od._diskId = disk.getAttribute("ovf:diskId");
-            od._fileRef = disk.getAttribute("ovf:fileRef");
-            od._populatedSize = NumberUtils.toLong(disk.getAttribute("ovf:populatedSize"));
+            String allocationUnits = getNodeAttribute(disk,"ovf","capacityAllocationUnits");
+            od._diskId = getNodeAttribute(disk,"ovf","diskId");
+            od._fileRef = getNodeAttribute(disk,"ovf","fileRef");
+            od._populatedSize = NumberUtils.toLong(getNodeAttribute(disk,"ovf","populatedSize"));
 
             if ((od._capacity != 0) && (allocationUnits != null)) {
-
                 long units = 1;
                 if (allocationUnits.equalsIgnoreCase("KB") || allocationUnits.equalsIgnoreCase("KiloBytes") || allocationUnits.equalsIgnoreCase("byte * 2^10")) {
                     units = ResourceType.bytesToKiB;
@@ -304,10 +350,10 @@ public class OVFHelper {
         for (int j = 0; j < files.getLength(); j++) {
             Element file = (Element)files.item(j);
             OVFFile of = new OVFFile();
-            of._href = file.getAttribute("ovf:href");
+            of._href = getNodeAttribute(file,"ovf","href");
             if (of._href.endsWith("vmdk") || of._href.endsWith("iso")) {
-                of._id = file.getAttribute("ovf:id");
-                String size = file.getAttribute("ovf:size");
+                of._id = getNodeAttribute(file,"ovf","id");
+                String size = getNodeAttribute(file,"ovf", "size");
                 if (StringUtils.isNotBlank(size)) {
                     of._size = Long.parseLong(size);
                 } else {
@@ -421,9 +467,9 @@ public class OVFHelper {
         List<Element> toremove = new ArrayList<>();
         for (int j = 0; j < files.getLength(); j++) {
             Element file = (Element)files.item(j);
-            String href = file.getAttribute("ovf:href");
+            String href = getNodeAttribute(file,"ovf", "href");
             if (diskName.equals(href)) {
-                keepfile = file.getAttribute("ovf:id");
+                keepfile = getNodeAttribute(file,"ovf","id");
             } else {
                 toremove.add(file);
             }
@@ -431,11 +477,11 @@ public class OVFHelper {
         String keepdisk = null;
         for (int i = 0; i < disks.getLength(); i++) {
             Element disk = (Element)disks.item(i);
-            String fileRef = disk.getAttribute("ovf:fileRef");
+            String fileRef = getNodeAttribute(disk,"ovf","fileRef");
             if (keepfile == null) {
                 s_logger.info("FATAL: OVA format error");
             } else if (keepfile.equals(fileRef)) {
-                keepdisk = disk.getAttribute("ovf:diskId");
+                keepdisk = getNodeAttribute(disk,"ovf","diskId");
             } else {
                 toremove.add(disk);
             }
@@ -591,7 +637,7 @@ public class OVFHelper {
         for (int i = 0; i < networkElements.getLength(); i++) {
 
             Element networkElement = (Element)networkElements.item(i);
-            String networkName = networkElement.getAttribute("ovf:name");
+            String networkName = getNodeAttribute(networkElement,"ovf","name");
 
             String description = getChildNodeValue(networkElement, "Description");
 
@@ -644,7 +690,7 @@ public class OVFHelper {
             Node node = childNodes.item(i);
             if (node != null && node.getNodeName().equals("Configuration")) {
                 Element configuration = (Element) node;
-                String configurationId = configuration.getAttribute("ovf:id");
+                String configurationId = getNodeAttribute(configuration,"ovf","id");
                 String description = getChildNodeValue(configuration, "Description");
                 String label = getChildNodeValue(configuration, "Label");
                 OVFConfigurationTO option = new OVFConfigurationTO(configurationId, label, description);
@@ -669,7 +715,7 @@ public class OVFHelper {
             Node node = childNodes.item(i);
             if (node != null && node.getNodeName().equals("Item")) {
                 Element configuration = (Element) node;
-                String configurationIds = configuration.getAttribute("configuration");
+                String configurationIds = getNodeAttribute(configuration, "ovf", "configuration");
                 String allocationUnits = getChildNodeValue(configuration, "AllocationUnits");
                 String description = getChildNodeValue(configuration, "Description");
                 String elementName = getChildNodeValue(configuration, "ElementName");

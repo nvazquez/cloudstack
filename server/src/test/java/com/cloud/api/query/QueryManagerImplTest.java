@@ -79,7 +79,7 @@ public class QueryManagerImplTest {
     private VMTemplateDetailVO createDetailVO(String name, String type, String value, String qualifiers, String label, String description) {
         VMTemplateDetailVO vo = new VMTemplateDetailVO();
         vo.setName(ImageStore.ACS_PROPERTY_PREFIX + name);
-        OVFPropertyTO propertyTO = new OVFPropertyTO(name, type, value, qualifiers, true, label, description, false);
+        OVFPropertyTO propertyTO = new OVFPropertyTO(name, type, value, qualifiers, true, label, description, false, 0, "test");
         Gson gson = new Gson();
         vo.setValue(gson.toJson(propertyTO));
         return vo;

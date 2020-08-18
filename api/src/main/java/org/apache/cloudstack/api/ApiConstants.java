@@ -184,6 +184,7 @@ public class ApiConstants {
     public static final String ICMP_TYPE = "icmptype";
     public static final String ID = "id";
     public static final String IDS = "ids";
+    public static final String INDEX = "index";
     public static final String PREVIOUS_ACL_RULE_ID = "previousaclruleid";
     public static final String NEXT_ACL_RULE_ID = "nextaclruleid";
     public static final String MOVE_ACL_CONSISTENCY_HASH = "aclconsistencyhash";

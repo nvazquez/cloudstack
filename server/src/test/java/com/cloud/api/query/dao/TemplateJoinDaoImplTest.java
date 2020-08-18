@@ -123,7 +123,8 @@ public class TemplateJoinDaoImplTest extends GenericDaoBaseWithTagInformationBas
     public static final String TYPE = "type";
     @Test
     public void createTemplateOVFPropertyResponse() {
-        OVFPropertyTO ovfPropertyTO = new OVFPropertyTO("naam", TYPE, "value", "", true, "concise label", "very elaborate description", false);
+        OVFPropertyTO ovfPropertyTO = new OVFPropertyTO("naam", TYPE, "value", "", true, "concise label",
+                "very elaborate description", false, 0, "default");
 
         TemplateOVFPropertyResponse response = _templateJoinDaoImpl.createTemplateOVFPropertyResponse(ovfPropertyTO);
         assertEquals(String.format("type should not be '%s' but '%s'",response.getType(), TYPE), TYPE, response.getType());

@@ -41,18 +41,14 @@ public class OVFPropertyTO {
     private String label;
     private String description;
     private Boolean password;
+    private int index;
+    private String category;
 
     public OVFPropertyTO() {
     }
 
-    public OVFPropertyTO(String key, String value, boolean password) {
-        this.key = key;
-        this.value = value;
-        this.password = password;
-    }
-
     public OVFPropertyTO(String key, String type, String value, String qualifiers, boolean userConfigurable,
-                       String label, String description, boolean password) {
+                       String label, String description, boolean password, int index, String category) {
         this.key = key;
         this.type = type;
         this.value = value;
@@ -61,6 +57,8 @@ public class OVFPropertyTO {
         this.label = label;
         this.description = description;
         this.password = password;
+        this.index = index;
+        this.category = category;
     }
 
     public Long getTemplateId() {
@@ -129,5 +127,13 @@ public class OVFPropertyTO {
 
     public void setPassword(Boolean password) {
         this.password = password;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public int getIndex() {
+        return index;
     }
 }

@@ -65,6 +65,8 @@ public interface TemplateJoinDao extends GenericDao<TemplateJoinVO, Long> {
         propertyResponse.setLabel(ovfPropertyTO.getLabel());
         propertyResponse.setDescription(ovfPropertyTO.getDescription());
         propertyResponse.setPassword(ovfPropertyTO.isPassword());
+        propertyResponse.setCategory(ovfPropertyTO.getCategory());
+        propertyResponse.setIndex(ovfPropertyTO.getIndex());
         propertyResponse.setObjectName("ovfproperty");
         return propertyResponse;
     }
