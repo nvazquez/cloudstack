@@ -189,8 +189,10 @@ class VmwareVmImplementer {
             to.setPlatformEmulator(guestOsMapping.getGuestOsName());
         }
 
-        List<OVFPropertyTO> ovfProperties = getOvfPropertyList(vm, details);
-        handleOvfProperties(vm, to, details, ovfProperties);
+        if (vm.getTemplate().isDeployAsIs()) {
+            List<OVFPropertyTO> ovfProperties = getOvfPropertyList(vm, details);
+            handleOvfProperties(vm, to, details, ovfProperties);
+        }
 
         setDetails(to, details);
 
