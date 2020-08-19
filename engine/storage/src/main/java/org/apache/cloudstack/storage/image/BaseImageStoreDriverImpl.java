@@ -286,11 +286,14 @@ public abstract class BaseImageStoreDriverImpl implements ImageStoreDriver {
         OVFVirtualHardwareSectionTO ovfHardwareSection = answer.getOvfHardwareSection();
         List<OVFEulaSectionTO> eulaSections = answer.getEulaSections();
 
+        VMTemplateVO template = _templateDao.findById(obj.getId());
         TemplateDataStoreVO tmpltStoreVO = _templateStoreDao.findByStoreTemplate(store.getId(), obj.getId());
         if (tmpltStoreVO != null) {
             if (tmpltStoreVO.getDownloadState() == VMTemplateStorageResourceAssoc.Status.DOWNLOADED) {
-                persistExtraDetails(obj, ovfProperties, networkRequirements, disks, ovfHardwareSection, eulaSections);
-                processOVFHardwareSection(ovfHardwareSection, obj.getId());
+                if (template.isDeployAsIs()) {
+                    persistExtraDetails(obj, ovfProperties, networkRequirements, disks, ovfHardwareSection, eulaSections);
+                    processOVFHardwareSection(ovfHardwareSection, obj.getId());
+                }
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Template is already in DOWNLOADED state, ignore further incoming DownloadAnswer");
                 }
@@ -330,8 +333,10 @@ public abstract class BaseImageStoreDriverImpl implements ImageStoreDriver {
                 templateDaoBuilder.setChecksum(answer.getCheckSum());
                 _templateDao.update(obj.getId(), templateDaoBuilder);
             }
-            persistExtraDetails(obj, ovfProperties, networkRequirements, disks, ovfHardwareSection, eulaSections);
-            processOVFHardwareSection(ovfHardwareSection, obj.getId());
+            if (template.isDeployAsIs()) {
+                persistExtraDetails(obj, ovfProperties, networkRequirements, disks, ovfHardwareSection, eulaSections);
+                processOVFHardwareSection(ovfHardwareSection, obj.getId());
+            }
 
             CreateCmdResult result = new CreateCmdResult(null, null);
             caller.complete(result);
