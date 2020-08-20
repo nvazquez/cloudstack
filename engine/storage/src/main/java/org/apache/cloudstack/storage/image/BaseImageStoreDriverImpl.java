@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
@@ -33,7 +32,6 @@ import com.cloud.agent.api.storage.OVFConfigurationTO;
 import com.cloud.agent.api.storage.OVFEulaSectionTO;
 import com.cloud.agent.api.storage.OVFPropertyTO;
 import com.cloud.agent.api.storage.OVFVirtualHardwareItemTO;
-import com.cloud.agent.api.storage.OVFVirtualHardwareItemTO.HardwareResourceType;
 import com.cloud.agent.api.storage.OVFVirtualHardwareSectionTO;
 import com.cloud.storage.ImageStore;
 import com.cloud.storage.Upload;
@@ -43,7 +41,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.apache.cloudstack.api.net.NetworkPrerequisiteTO;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import org.apache.cloudstack.engine.subsystem.api.storage.CopyCommandResult;
@@ -290,10 +287,7 @@ public abstract class BaseImageStoreDriverImpl implements ImageStoreDriver {
         TemplateDataStoreVO tmpltStoreVO = _templateStoreDao.findByStoreTemplate(store.getId(), obj.getId());
         if (tmpltStoreVO != null) {
             if (tmpltStoreVO.getDownloadState() == VMTemplateStorageResourceAssoc.Status.DOWNLOADED) {
-                if (template.isDeployAsIs()) {
-                    persistExtraDetails(obj, ovfProperties, networkRequirements, disks, ovfHardwareSection, eulaSections);
-                    processOVFHardwareSection(ovfHardwareSection, obj.getId());
-                }
+                persistExtraDetails(obj, ovfProperties, networkRequirements, disks, ovfHardwareSection, eulaSections);
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Template is already in DOWNLOADED state, ignore further incoming DownloadAnswer");
                 }
@@ -333,10 +327,7 @@ public abstract class BaseImageStoreDriverImpl implements ImageStoreDriver {
                 templateDaoBuilder.setChecksum(answer.getCheckSum());
                 _templateDao.update(obj.getId(), templateDaoBuilder);
             }
-            if (template.isDeployAsIs()) {
-                persistExtraDetails(obj, ovfProperties, networkRequirements, disks, ovfHardwareSection, eulaSections);
-                processOVFHardwareSection(ovfHardwareSection, obj.getId());
-            }
+            persistExtraDetails(obj, ovfProperties, networkRequirements, disks, ovfHardwareSection, eulaSections);
 
             CreateCmdResult result = new CreateCmdResult(null, null);
             caller.complete(result);
@@ -372,81 +363,13 @@ public abstract class BaseImageStoreDriverImpl implements ImageStoreDriver {
     private void persistEulaSectionsAsTemplateDetails(List<OVFEulaSectionTO> eulaSections, long templateId) {
         CompressionUtil compressionUtil = new CompressionUtil();
         for (OVFEulaSectionTO eulaSectionTO : eulaSections) {
-            String key = ImageStore.OVF_EULA_SECTION_PREFIX + eulaSectionTO.getInfo();
+            String key = ImageStore.OVF_EULA_SECTION_PREFIX + eulaSectionTO.getIndex() + "-" + eulaSectionTO.getInfo();
             byte[] compressedLicense = eulaSectionTO.getCompressedLicense();
             try {
                 String detailValue = compressionUtil.decompressByteArary(compressedLicense);
                 savePropertyAttribute(templateId, key, detailValue);
             } catch (IOException e) {
                 LOGGER.error("Could not decompress the license for template " + templateId, e);
-            }
-        }
-    }
-
-    /**
-     * Process the OVF hardware section containing available deployment options (configuration) by matching them to service offerings
-     */
-    private void processOVFHardwareSection(OVFVirtualHardwareSectionTO hardwareSectionTO, long templateId) {
-        if (hardwareSectionTO != null) {
-            LOGGER.debug("Processing the OVF hardware section for template with ID " + templateId);
-            List<OVFConfigurationTO> configurations = hardwareSectionTO.getConfigurations();
-            processOVFConfigurations(configurations, templateId);
-        }
-    }
-
-    private long calculateUnitsMultiplier(String allocationUnits, HardwareResourceType resourceType) {
-        long unitsMultiplier = 1;
-        if (StringUtils.isNotBlank(allocationUnits)) {
-            String[] split = allocationUnits.split("\\*");
-            if (split.length > 1) {
-                String unit = split[0].trim();
-                String prefix = split[1].trim();
-                if (resourceType == HardwareResourceType.Processor && unit.equalsIgnoreCase("hertz")) {
-                    if (prefix.equals("10^9")) {
-                        // GHz - multiply by 1000 to get MHz
-                        unitsMultiplier = 1000;
-                    }
-                } else if (resourceType == HardwareResourceType.Memory && unit.equalsIgnoreCase("byte")) {
-                    if (prefix.equals("2^20")) {
-                        //MB - multiply by 1024 * 1024 to get bytes
-                        unitsMultiplier = 1024 * 1024;
-                    }
-                }
-            }
-        }
-        return unitsMultiplier;
-    }
-
-    private void processOVFConfigurationItem(OVFVirtualHardwareItemTO item) {
-        String elementName = item.getElementName();
-        Long limit = item.getLimit();
-        Long reservation = item.getReservation();
-        String allocationUnits = item.getAllocationUnits();
-        Long virtualQuantity = item.getVirtualQuantity();
-        long unitsMultiplier = calculateUnitsMultiplier(allocationUnits, item.getResourceType());
-        long limitValue = limit * unitsMultiplier;
-        long reservationValue = reservation * unitsMultiplier;
-        LOGGER.info(String.format("Configuration name %s: - quantity: %s - limit: %s - reservation: %s",
-                elementName, virtualQuantity, limitValue, reservationValue));
-    }
-
-    private void processOVFConfigurations(List<OVFConfigurationTO> configurations, long templateId) {
-        if (CollectionUtils.isNotEmpty(configurations)) {
-            LOGGER.debug("Processing the OVF configurations for template with ID " + templateId);
-            for (OVFConfigurationTO configuration : configurations) {
-                LOGGER.debug(String.format("Processing the OVF configuration: %s (%s)", configuration.getId(), configuration.getLabel()));
-                List<OVFVirtualHardwareItemTO> hardwareItems = configuration.getHardwareItems();
-                if (CollectionUtils.isNotEmpty(hardwareItems)) {
-                    LOGGER.debug("Found " + hardwareItems.size() + " hardware items for the configuration " + configuration.getId() +
-                            ", filtering CPU and memory items");
-                    List<OVFVirtualHardwareItemTO> filteredItems = hardwareItems.stream()
-                            .filter(x -> x.getResourceType() == HardwareResourceType.Processor
-                                    || x.getResourceType() == HardwareResourceType.Memory)
-                            .collect(Collectors.toList());
-                    for (OVFVirtualHardwareItemTO item : filteredItems) {
-                        processOVFConfigurationItem(item);
-                    }
-                }
             }
         }
     }

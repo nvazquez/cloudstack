@@ -29,10 +29,12 @@ public class OVFEulaSectionTO implements Serializable {
     private String info;
     @LogLevel(LogLevel.Log4jLevel.Off)
     private byte[] compressedLicense;
+    private int index;
 
-    public OVFEulaSectionTO(String info, byte[] license) {
+    public OVFEulaSectionTO(String info, byte[] license, int eulaIndex) {
         this.info = info;
         this.compressedLicense = license;
+        this.index = eulaIndex;
     }
 
     public String getInfo() {
@@ -41,5 +43,9 @@ public class OVFEulaSectionTO implements Serializable {
 
     public byte[] getCompressedLicense() {
         return this.compressedLicense;
+    }
+
+    public int getIndex() {
+        return index;
     }
 }

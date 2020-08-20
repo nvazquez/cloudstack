@@ -26,11 +26,13 @@ public class OVFConfigurationTO {
     private final String label;
     private final String description;
     private List<OVFVirtualHardwareItemTO> hardwareItems;
+    private int index;
 
-    public OVFConfigurationTO(String id, String label, String description) {
+    public OVFConfigurationTO(String id, String label, String description, int index) {
         this.id = id.toLowerCase();
         this.label = label;
         this.description = description;
+        this.index = index;
     }
 
     public String getId() {
@@ -51,5 +53,9 @@ public class OVFConfigurationTO {
 
     public List<OVFVirtualHardwareItemTO> getHardwareItems() {
         return hardwareItems;
+    }
+
+    public int getIndex() {
+        return index;
     }
 }

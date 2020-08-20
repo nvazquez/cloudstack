@@ -686,6 +686,7 @@ public class OVFHelper {
         }
         Node hardwareSectionNode = deploymentOptionSection.item(0);
         NodeList childNodes = hardwareSectionNode.getChildNodes();
+        int index = 0;
         for (int i = 0; i < childNodes.getLength(); i++) {
             Node node = childNodes.item(i);
             if (node != null && node.getNodeName().equals("Configuration")) {
@@ -693,8 +694,9 @@ public class OVFHelper {
                 String configurationId = getNodeAttribute(configuration,"ovf","id");
                 String description = getChildNodeValue(configuration, "Description");
                 String label = getChildNodeValue(configuration, "Label");
-                OVFConfigurationTO option = new OVFConfigurationTO(configurationId, label, description);
+                OVFConfigurationTO option = new OVFConfigurationTO(configurationId, label, description, index);
                 options.add(option);
+                index++;
             }
         }
         return options;
@@ -776,6 +778,7 @@ public class OVFHelper {
             return eulas;
         }
         NodeList eulaSections = doc.getElementsByTagName("EulaSection");
+        int eulaIndex = 0;
         if (eulaSections.getLength() > 0) {
             for (int index = 0; index < eulaSections.getLength(); index++) {
                 Node eulaNode = eulaSections.item(index);
@@ -797,8 +800,9 @@ public class OVFHelper {
                     s_logger.error("Could not compress the license for info " + eulaInfo);
                     continue;
                 }
-                OVFEulaSectionTO eula = new OVFEulaSectionTO(eulaInfo, compressedLicense);
+                OVFEulaSectionTO eula = new OVFEulaSectionTO(eulaInfo, compressedLicense, eulaIndex);
                 eulas.add(eula);
+                eulaIndex++;
             }
         }
 
