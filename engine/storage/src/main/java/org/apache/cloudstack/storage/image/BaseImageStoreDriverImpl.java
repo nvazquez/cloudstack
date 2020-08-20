@@ -372,7 +372,7 @@ public abstract class BaseImageStoreDriverImpl implements ImageStoreDriver {
     private void persistEulaSectionsAsTemplateDetails(List<OVFEulaSectionTO> eulaSections, long templateId) {
         CompressionUtil compressionUtil = new CompressionUtil();
         for (OVFEulaSectionTO eulaSectionTO : eulaSections) {
-            String key = ImageStore.OVF_EULA_SECTION_PREFIX + eulaSectionTO.getInfo().trim().replaceAll("\\s","") ;
+            String key = ImageStore.OVF_EULA_SECTION_PREFIX + eulaSectionTO.getInfo();
             byte[] compressedLicense = eulaSectionTO.getCompressedLicense();
             try {
                 String detailValue = compressionUtil.decompressByteArary(compressedLicense);

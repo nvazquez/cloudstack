@@ -723,6 +723,6 @@ public class OVFHelperTest {
     @Test
     public void testGetOVFPropertiesWithCategories() throws IOException, SAXException, ParserConfigurationException {
         List<OVFPropertyTO> props = ovfHelper.getOVFPropertiesFromXmlString(productSectionWithCategories);
-        int a = 2;
+        Assert.assertEquals(18, props.size());
     }
 }

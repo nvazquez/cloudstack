@@ -143,6 +143,7 @@ public class OVAProcessor extends AdapterBase implements Processor {
         info.hardwareSection = hardwareSection;
         List<OVFEulaSectionTO> eulaSections = ovfHelper.getEulaSectionsFromDocument(doc);
         if (CollectionUtils.isNotEmpty(eulaSections)) {
+            LOGGER.info("Found " + eulaSections.size() + " license agreements");
             info.eulaSections = eulaSections;
         }
     }
