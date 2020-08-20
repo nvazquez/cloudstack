@@ -2863,6 +2863,8 @@ public class QueryManagerImpl extends MutualExclusiveIdsManagerBase implements Q
         ServiceOfferingVO currentVmOffering = null;
         Boolean isRecursive = cmd.isRecursive();
         Long zoneId = cmd.getZoneId();
+        Integer cpuNumber = cmd.getCpuNumber();
+        Integer memory = cmd.getMemory();
 
         SearchCriteria<ServiceOfferingJoinVO> sc = _srvOfferingJoinDao.createSearchCriteria();
         if (!_accountMgr.isRootAdmin(caller.getId()) && isSystem) {
@@ -2914,35 +2916,7 @@ public class QueryManagerImpl extends MutualExclusiveIdsManagerBase implements Q
                 if (caller.getType() == Account.ACCOUNT_TYPE_NORMAL) {
                     throw new InvalidParameterValueException("Only ROOT admins and Domain admins can list service offerings with isrecursive=true");
                 }
-            }/* else { // domain + all ancestors
-                // find all domain Id up to root domain for this account
-                List<Long> domainIds = new ArrayList<Long>();
-                DomainVO domainRecord;
-                if (vmId != null) {
-                    UserVmVO vmInstance = _userVmDao.findById(vmId);
-                    domainRecord = _domainDao.findById(vmInstance.getDomainId());
-                    if (domainRecord == null) {
-                        s_logger.error("Could not find the domainId for vmId:" + vmId);
-                        throw new CloudAuthenticationException("Could not find the domainId for vmId:" + vmId);
-                    }
-                } else {
-                    domainRecord = _domainDao.findById(caller.getDomainId());
-                    if (domainRecord == null) {
-                        s_logger.error("Could not find the domainId for account:" + caller.getAccountName());
-                        throw new CloudAuthenticationException("Could not find the domainId for account:" + caller.getAccountName());
-                    }
-                }
-                domainIds.add(domainRecord.getId());
-                while (domainRecord.getParent() != null) {
-                    domainRecord = _domainDao.findById(domainRecord.getParent());
-                    domainIds.add(domainRecord.getId());
-                }
-
-                SearchCriteria<ServiceOfferingJoinVO> spc = _srvOfferingJoinDao.createSearchCriteria();
-                spc.addOr("domainId", SearchCriteria.Op.IN, domainIds.toArray());
-                spc.addOr("domainId", SearchCriteria.Op.NULL); // include public offering as well
-                sc.addAnd("domainId", SearchCriteria.Op.SC, spc);
-            }*/
+            }
         } else {
             // for root users
             if (caller.getDomainId() != 1 && isSystem) { // NON ROOT admin
@@ -2987,6 +2961,30 @@ public class QueryManagerImpl extends MutualExclusiveIdsManagerBase implements Q
             SearchCriteria<ServiceOfferingJoinVO> zoneSC = sb.create();
             zoneSC.setParameters("zoneId", String.valueOf(zoneId));
             sc.addAnd("zoneId", SearchCriteria.Op.SC, zoneSC);
+        }
+
+        if (cpuNumber != null) {
+            SearchCriteria<ServiceOfferingJoinVO> cpuConstraintSearchCriteria = _srvOfferingJoinDao.createSearchCriteria();
+            cpuConstraintSearchCriteria.addAnd("minCpu", Op.LTEQ, cpuNumber);
+            cpuConstraintSearchCriteria.addAnd("maxCpu", Op.GTEQ, cpuNumber);
+
+            SearchCriteria<ServiceOfferingJoinVO> cpuSearchCriteria = _srvOfferingJoinDao.createSearchCriteria();
+            cpuSearchCriteria.addOr("minCpu", Op.NULL);
+            cpuSearchCriteria.addOr("constraints", Op.SC, cpuConstraintSearchCriteria);
+
+            sc.addAnd("cpuConstraints", SearchCriteria.Op.SC, cpuSearchCriteria);
+        }
+
+        if (memory != null) {
+            SearchCriteria<ServiceOfferingJoinVO> memoryConstraintSearchCriteria = _srvOfferingJoinDao.createSearchCriteria();
+            memoryConstraintSearchCriteria.addAnd("minMemory", Op.LTEQ, memory);
+            memoryConstraintSearchCriteria.addAnd("maxMemory", Op.GTEQ, memory);
+
+            SearchCriteria<ServiceOfferingJoinVO> memSearchCriteria = _srvOfferingJoinDao.createSearchCriteria();
+            memSearchCriteria.addOr("minMemory", Op.NULL);
+            memSearchCriteria.addOr("memconstraints", Op.SC, memoryConstraintSearchCriteria);
+
+            sc.addAnd("memoryConstraints", SearchCriteria.Op.SC, memSearchCriteria);
         }
 
         Pair<List<ServiceOfferingJoinVO>, Integer> result = _srvOfferingJoinDao.searchAndCount(sc, searchFilter);
