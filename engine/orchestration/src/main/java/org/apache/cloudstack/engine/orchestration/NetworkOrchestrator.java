@@ -219,6 +219,7 @@ import com.cloud.vm.NicProfile;
 import com.cloud.vm.NicVO;
 import com.cloud.vm.ReservationContext;
 import com.cloud.vm.ReservationContextImpl;
+import com.cloud.vm.UserVmManager;
 import com.cloud.vm.UserVmVO;
 import com.cloud.vm.VMInstanceVO;
 import com.cloud.vm.VirtualMachine;
@@ -303,6 +304,8 @@ public class NetworkOrchestrator extends ManagerBase implements NetworkOrchestra
     VpcVirtualNetworkApplianceService _routerService;
     @Inject
     VMTemplateDetailsDao templateDetailsDao;
+    @Inject
+    UserVmManager _userVmMgr;
 
     List<NetworkGuru> networkGurus;
 
@@ -1877,6 +1880,11 @@ public class NetworkOrchestrator extends ManagerBase implements NetworkOrchestra
                     s_logger.error("NetworkGuru " + guru + " prepareForMigration failed."); // XXX: Transaction error
                 }
             }
+
+            if (network.getGuestType() == Network.GuestType.L2 && vm.getType() == VirtualMachine.Type.User) {
+                _userVmMgr.setupVmForPvlan(false, vm.getVirtualMachine().getHostId(), profile);
+            }
+
             final List<Provider> providersToImplement = getNetworkProviders(network.getId());
             for (final NetworkElement element : networkElements) {
                 if (providersToImplement.contains(element.getProvider())) {
@@ -1997,6 +2005,11 @@ public class NetworkOrchestrator extends ManagerBase implements NetworkOrchestra
             if (guru instanceof NetworkMigrationResponder) {
                 ((NetworkMigrationResponder)guru).commitMigration(nicSrc, network, src, src_context, dst_context);
             }
+
+            if (network.getGuestType() == Network.GuestType.L2 && src.getType() == VirtualMachine.Type.User) {
+                _userVmMgr.setupVmForPvlan(true, src.getVirtualMachine().getHostId(), nicSrc);
+            }
+
             final List<Provider> providersToImplement = getNetworkProviders(network.getId());
             for (final NetworkElement element : networkElements) {
                 if (providersToImplement.contains(element.getProvider())) {
@@ -2028,6 +2041,11 @@ public class NetworkOrchestrator extends ManagerBase implements NetworkOrchestra
             if (guru instanceof NetworkMigrationResponder) {
                 ((NetworkMigrationResponder)guru).rollbackMigration(nicDst, network, dst, src_context, dst_context);
             }
+
+            if (network.getGuestType() == Network.GuestType.L2 && src.getType() == VirtualMachine.Type.User) {
+                _userVmMgr.setupVmForPvlan(true, dst.getVirtualMachine().getHostId(), nicDst);
+            }
+
             final List<Provider> providersToImplement = getNetworkProviders(network.getId());
             for (final NetworkElement element : networkElements) {
                 if (providersToImplement.contains(element.getProvider())) {
@@ -2583,6 +2601,12 @@ public class NetworkOrchestrator extends ManagerBase implements NetworkOrchestra
                         } else {
                             uri = BroadcastDomainType.fromString(vlanIdFinal);
                         }
+
+                        if (_networksDao.listByPhysicalNetworkPvlan(physicalNetworkId, uri.toString()).size() > 0) {
+                            throw new InvalidParameterValueException("Network with vlan " + vlanIdFinal +
+                                " already exists or overlaps with other network pvlans in zone " + zoneId);
+                        }
+
                         userNetwork.setBroadcastUri(uri);
                         if (!vlanIdFinal.equalsIgnoreCase(Vlan.UNTAGGED)) {
                             userNetwork.setBroadcastDomainType(BroadcastDomainType.Vlan);
@@ -2593,7 +2617,7 @@ public class NetworkOrchestrator extends ManagerBase implements NetworkOrchestra
                         if (vlanIdFinal.equalsIgnoreCase(Vlan.UNTAGGED)) {
                             throw new InvalidParameterValueException("Cannot support pvlan with untagged primary vlan!");
                         }
-                        URI uri = NetUtils.generateUriForPvlan(vlanIdFinal, isolatedPvlan);
+                        URI uri = NetUtils.generateUriForPvlan(vlanIdFinal, isolatedPvlan, isolatedPvlanType.toString());
                         if (_networksDao.listByPhysicalNetworkPvlan(physicalNetworkId, uri.toString(), isolatedPvlanType).size() > 0) {
                             throw new InvalidParameterValueException("Network with primary vlan " + vlanIdFinal +
                                     " and secondary vlan " + isolatedPvlan + " type " + isolatedPvlanType +
