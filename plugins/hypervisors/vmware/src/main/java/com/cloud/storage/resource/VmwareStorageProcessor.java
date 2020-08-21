@@ -3606,11 +3606,6 @@ public class VmwareStorageProcessor implements StorageProcessor {
             if (vm == null) {
                 throw new CloudRuntimeException("Unable to get the cloned VM " + cloneName);
             }
-            ClusterMO clusterMo = new ClusterMO(context, hyperHost.getHyperHostCluster());
-            String hwVersion = HypervisorHostHelper.getNewVMHardwareVersion(clusterMo, dcMo);
-            if (!vm.upgradeVirtualHardwareVersion(hwVersion)) {
-                s_logger.info("Could not upgrade hardware version on VM " + cloneName + ", keeping the current hardware version");
-            }
             return vm;
         } catch (Throwable e) {
             String msg = "Error cloning VM from template in primary storage: %s" + e.getMessage();

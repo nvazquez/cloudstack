@@ -1788,8 +1788,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
                     s_logger.trace(String.format("deploying OVA from %s as is", vmSpec.getTemplateLocation()));
                 }
                 String destDatastore = getDatastoreFromSpecDisks(specDisks);
-                _storageProcessor.cloneVMFromTemplate(vmSpec.getTemplateName(), vmInternalCSName, destDatastore);
-                vmInVcenter = dcMo.findVm(vmInternalCSName);
+                vmInVcenter = _storageProcessor.cloneVMFromTemplate(vmSpec.getTemplateName(), vmInternalCSName, destDatastore);
                 mapSpecDisksToClonedDisks(vmInVcenter, vmInternalCSName, specDisks);
             }
 
