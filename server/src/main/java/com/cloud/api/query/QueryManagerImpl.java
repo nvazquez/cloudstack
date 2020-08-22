@@ -2859,6 +2859,7 @@ public class QueryManagerImpl extends MutualExclusiveIdsManagerBase implements Q
         Long zoneId = cmd.getZoneId();
         Integer cpuNumber = cmd.getCpuNumber();
         Integer memory = cmd.getMemory();
+        Integer cpuSpeed = cmd.getCpuSpeed();
 
         SearchCriteria<ServiceOfferingJoinVO> sc = _srvOfferingJoinDao.createSearchCriteria();
         if (!_accountMgr.isRootAdmin(caller.getId()) && isSystem) {
@@ -2979,6 +2980,13 @@ public class QueryManagerImpl extends MutualExclusiveIdsManagerBase implements Q
             memSearchCriteria.addOr("memconstraints", Op.SC, memoryConstraintSearchCriteria);
 
             sc.addAnd("memoryConstraints", SearchCriteria.Op.SC, memSearchCriteria);
+        }
+
+        if (cpuSpeed != null) {
+            SearchCriteria<ServiceOfferingJoinVO> cpuSpeedSearchCriteria = _srvOfferingJoinDao.createSearchCriteria();
+            cpuSpeedSearchCriteria.addOr("speed", Op.NULL);
+            cpuSpeedSearchCriteria.addOr("speed", Op.GTEQ, cpuSpeed);
+            sc.addAnd("cpuspeedconstraints", SearchCriteria.Op.SC, cpuSpeedSearchCriteria);
         }
 
         Pair<List<ServiceOfferingJoinVO>, Integer> result = _srvOfferingJoinDao.searchAndCount(sc, searchFilter);

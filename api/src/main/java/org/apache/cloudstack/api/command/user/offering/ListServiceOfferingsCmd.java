@@ -77,6 +77,12 @@ public class ListServiceOfferingsCmd extends BaseListDomainResourcesCmd {
             since = "4.15")
     private Integer memory;
 
+    @Parameter(name = ApiConstants.CPU_SPEED,
+            type = CommandType.INTEGER,
+            description = "the CPU speed that listed offerings must support",
+            since = "4.15")
+    private Integer cpuSpeed;
+
     /////////////////////////////////////////////////////
     /////////////////// Accessors ///////////////////////
     /////////////////////////////////////////////////////
@@ -111,6 +117,10 @@ public class ListServiceOfferingsCmd extends BaseListDomainResourcesCmd {
 
     public Integer getMemory() {
         return memory;
+    }
+
+    public Integer getCpuSpeed() {
+        return cpuSpeed;
     }
 
     /////////////////////////////////////////////////////

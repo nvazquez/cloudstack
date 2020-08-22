@@ -391,7 +391,7 @@ public abstract class BaseImageStoreDriverImpl implements ImageStoreDriver {
             if (CollectionUtils.isNotEmpty(ovfHardwareSection.getConfigurations())) {
                 for (OVFConfigurationTO configuration : ovfHardwareSection.getConfigurations()) {
                     String key = configuration.getId();
-                    String propKey = ImageStore.OVF_HARDWARE_CONFIGURATION_PREFIX + key;
+                    String propKey = ImageStore.OVF_HARDWARE_CONFIGURATION_PREFIX + configuration.getIndex() + "-" + key;
                     persistTemplateDetailGsonEncoded(templateId, propKey, configuration);
                 }
             }
