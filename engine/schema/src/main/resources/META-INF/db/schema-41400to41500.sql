@@ -296,8 +296,6 @@ CREATE VIEW `cloud`.`template_view` AS
              AND ((`resource_tags`.`resource_type` = 'Template')
              OR (`resource_tags`.`resource_type` = 'ISO')))));
 
-DROP TABLE IF EXISTS `cloud`.`template_ovf_properties`;
-
 -- mysql8 nics table fix for newer distributions
 ALTER TABLE `cloud`.`nics` MODIFY COLUMN update_time timestamp DEFAULT CURRENT_TIMESTAMP;
 

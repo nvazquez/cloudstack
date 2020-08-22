@@ -31,11 +31,7 @@ import java.util.stream.Stream;
 
 import javax.inject.Inject;
 
-import com.cloud.agent.api.storage.OVFPropertyTO;
-import com.cloud.storage.ImageStore;
-import com.cloud.storage.VMTemplateDetailVO;
 import com.cloud.storage.dao.VMTemplateDetailsDao;
-import com.google.gson.Gson;
 import org.apache.cloudstack.acl.ControlledEntity.ACLType;
 import org.apache.cloudstack.affinity.AffinityGroupDomainMapVO;
 import org.apache.cloudstack.affinity.AffinityGroupResponse;
@@ -76,7 +72,6 @@ import org.apache.cloudstack.api.command.user.project.ListProjectsCmd;
 import org.apache.cloudstack.api.command.user.resource.ListDetailOptionsCmd;
 import org.apache.cloudstack.api.command.user.securitygroup.ListSecurityGroupsCmd;
 import org.apache.cloudstack.api.command.user.tag.ListTagsCmd;
-import org.apache.cloudstack.api.command.user.template.ListTemplateOVFProperties;
 import org.apache.cloudstack.api.command.user.template.ListTemplatesCmd;
 import org.apache.cloudstack.api.command.user.vm.ListVMsCmd;
 import org.apache.cloudstack.api.command.user.vmgroup.ListVMGroupsCmd;
@@ -106,7 +101,6 @@ import org.apache.cloudstack.api.response.SecurityGroupResponse;
 import org.apache.cloudstack.api.response.ServiceOfferingResponse;
 import org.apache.cloudstack.api.response.StoragePoolResponse;
 import org.apache.cloudstack.api.response.StorageTagResponse;
-import org.apache.cloudstack.api.response.TemplateOVFPropertyResponse;
 import org.apache.cloudstack.api.response.TemplateResponse;
 import org.apache.cloudstack.api.response.UserResponse;
 import org.apache.cloudstack.api.response.UserVmResponse;
@@ -4035,28 +4029,6 @@ public class QueryManagerImpl extends MutualExclusiveIdsManagerBase implements Q
         mgmtResponse.setVersion(mgmt.getVersion());
         mgmtResponse.setObjectName("managementserver");
         return mgmtResponse;
-    }
-
-    @Override
-    public ListResponse<TemplateOVFPropertyResponse> listTemplateOVFProperties(ListTemplateOVFProperties cmd) {
-        ListResponse<TemplateOVFPropertyResponse> response = new ListResponse<>();
-        List<TemplateOVFPropertyResponse> result = new ArrayList<>();
-        Long templateId = cmd.getTemplateId();
-        SearchCriteria<VMTemplateDetailVO> ssc = vmTemplateDetailsDao.createSearchCriteria();
-        ssc.addAnd("resourceId", Op.EQ, templateId);
-        ssc.addAnd("name", SearchCriteria.Op.LIKE, ImageStore.ACS_PROPERTY_PREFIX + "%");
-
-        List<VMTemplateDetailVO> ovfProperties = vmTemplateDetailsDao.search(ssc, null);
-
-        Gson gson = new Gson();
-        for (VMTemplateDetailVO property : ovfProperties) {
-            OVFPropertyTO ovfPropertyTO = gson.fromJson(property.getValue(), OVFPropertyTO.class);
-
-            TemplateOVFPropertyResponse propertyResponse = _templateJoinDao.createTemplateOVFPropertyResponse(ovfPropertyTO);
-            result.add(propertyResponse);
-        }
-        response.setResponses(result);
-        return response;
     }
 
     @Override

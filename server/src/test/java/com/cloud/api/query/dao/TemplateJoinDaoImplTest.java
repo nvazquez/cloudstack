@@ -16,11 +16,9 @@
 // under the License.
 package com.cloud.api.query.dao;
 
-import com.cloud.agent.api.storage.OVFPropertyTO;
 import com.cloud.hypervisor.Hypervisor;
 import com.cloud.storage.Storage;
 import com.cloud.user.Account;
-import org.apache.cloudstack.api.response.TemplateOVFPropertyResponse;
 import org.apache.cloudstack.api.response.TemplateResponse;
 import org.junit.Assert;
 import org.junit.Before;
@@ -36,8 +34,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Date;
 import java.util.Map;
-
-import static org.junit.Assert.assertEquals;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(ApiDBUtils.class)
@@ -118,15 +114,5 @@ public class TemplateJoinDaoImplTest extends GenericDaoBaseWithTagInformationBas
         ReflectionTestUtils.setField(template, "domainName", domainName);
         ReflectionTestUtils.setField(template, "detailName", detailName);
         ReflectionTestUtils.setField(template, "detailValue", detailValue);
-    }
-
-    public static final String TYPE = "type";
-    @Test
-    public void createTemplateOVFPropertyResponse() {
-        OVFPropertyTO ovfPropertyTO = new OVFPropertyTO("naam", TYPE, "value", "", true, "concise label",
-                "very elaborate description", false, 0, "default");
-
-        TemplateOVFPropertyResponse response = _templateJoinDaoImpl.createTemplateOVFPropertyResponse(ovfPropertyTO);
-        assertEquals(String.format("type should not be '%s' but '%s'",response.getType(), TYPE), TYPE, response.getType());
     }
 }

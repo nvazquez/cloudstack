@@ -26,10 +26,6 @@ import java.util.Set;
 
 import javax.inject.Inject;
 
-import com.cloud.agent.api.storage.OVFPropertyTO;
-import com.cloud.storage.ImageStore;
-import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
 import org.apache.cloudstack.api.ApiConstants;
 import org.apache.cloudstack.utils.security.DigestHelper;
 import org.apache.log4j.Logger;
@@ -218,7 +214,7 @@ public class TemplateJoinDaoImpl extends GenericDaoBaseWithTagInformation<Templa
         }
 
         // set details map
-        if (detailsView.contains(ApiConstants.DomainDetails.all) || detailsView.contains(ApiConstants.DomainDetails.resource)) {
+        if (detailsView.contains(ApiConstants.DomainDetails.all)) {
             Map<String, String> details = _templateDetailsDao.listDetailsKeyPairs(template.getId());
             templateResponse.setDetails(details);
         }
@@ -299,21 +295,10 @@ public class TemplateJoinDaoImpl extends GenericDaoBaseWithTagInformation<Templa
 
     @Override
     public TemplateResponse setTemplateResponse(EnumSet<ApiConstants.DomainDetails> detailsView, ResponseView view, TemplateResponse templateResponse, TemplateJoinVO template) {
-        Gson gson = new Gson();
-
-        if (detailsView.contains(ApiConstants.DomainDetails.all) || detailsView.contains(ApiConstants.DomainDetails.resource)) {
+        if (detailsView.contains(ApiConstants.DomainDetails.all)) {
             // update details map
             String key = template.getDetailName();
             if (key != null) {
-                if (key.startsWith(ImageStore.ACS_PROPERTY_PREFIX)) {
-                    try {
-                        OVFPropertyTO property = gson.fromJson(template.getDetailValue(), OVFPropertyTO.class);
-                        templateResponse.addProperty(createTemplateOVFPropertyResponse(property));
-                    } catch (JsonSyntaxException e) {
-                        s_logger.warn(String.format("found an unexpected property for template '%s'; %s: %s",
-                                template.getUuid(), template.getDetailName(), template.getDetailValue()));
-                    }
-                }
                 templateResponse.addDetail(key, template.getDetailValue());
             }
         }

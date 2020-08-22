@@ -18,7 +18,6 @@ package org.apache.cloudstack.api.response;
 
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -209,10 +208,6 @@ public class TemplateResponse extends BaseResponseWithTagInformation implements 
     @Param(description = "true if template requires HVM enabled, false otherwise")
     private Boolean requiresHvm;
 
-    @SerializedName(ApiConstants.PROPERTIES)
-    @Param(description = "VMware only: the list required properties for deployment", responseObject = TemplateOVFPropertyResponse.class)
-    private Set<TemplateOVFPropertyResponse> properties;
-
     public TemplateResponse() {
         tags = new LinkedHashSet<>();
     }
@@ -376,17 +371,6 @@ public class TemplateResponse extends BaseResponseWithTagInformation implements 
             setDetails(new HashMap<>());
         }
         this.details.put(key,value);
-    }
-
-    public Set<TemplateOVFPropertyResponse> getProperties() {
-        return this.properties;
-    }
-
-    public void addProperty(TemplateOVFPropertyResponse property) {
-        if (this.properties == null) {
-            this.properties = new HashSet<TemplateOVFPropertyResponse>();
-        }
-        this.properties.add(property);
     }
 
     public void setTags(Set<ResourceTagResponse> tags) {
