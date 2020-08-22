@@ -309,7 +309,8 @@ INSERT IGNORE INTO `cloud`.`hypervisor_capabilities`(uuid, hypervisor_type, hype
 INSERT IGNORE INTO `cloud`.`guest_os_hypervisor` (uuid,hypervisor_type, hypervisor_version, guest_os_name, guest_os_id, created, is_user_defined) SELECT UUID(),'Xenserver', '8.1.0', guest_os_name, guest_os_id, utc_timestamp(), 0 FROM `cloud`.`guest_os_hypervisor` WHERE hypervisor_type='Xenserver' AND hypervisor_version='8.0.0';
 
 -- Add mincpu, maxcpu, minmemory and maxmemory to the view supporting constrained offerings
-ALTER VIEW `cloud`.`service_offering_view` AS
+DROP VIEW IF EXISTS `cloud`.`service_offering_view`;
+CREATE VIEW `cloud`.`service_offering_view` AS
     SELECT
         `service_offering`.`id` AS `id`,
         `disk_offering`.`uuid` AS `uuid`,
