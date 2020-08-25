@@ -2663,14 +2663,14 @@ public class NetworkOrchestrator extends ManagerBase implements NetworkOrchestra
         return network;
     }
 
-    /**
-     * Checks bypass VLAN id/range overlap check during network creation for guest networks
-     * @param bypassVlanOverlapCheck bypass VLAN id/range overlap check
-     * @param ntwkOff network offering
-     */
-    private boolean hasGuestBypassVlanOverlapCheck(final boolean bypassVlanOverlapCheck, final NetworkOfferingVO ntwkOff, final boolean isPrivateNetwork) {
-        return bypassVlanOverlapCheck && (ntwkOff.getGuestType() == GuestType.Shared || isPrivateNetwork);
-    }
+  /**
+   * Checks bypass VLAN id/range overlap check during network creation for guest networks
+   * @param bypassVlanOverlapCheck bypass VLAN id/range overlap check
+   * @param ntwkOff network offering
+   */
+  private boolean hasGuestBypassVlanOverlapCheck(final boolean bypassVlanOverlapCheck, final NetworkOfferingVO ntwkOff, final boolean isPrivateNetwork) {
+    return bypassVlanOverlapCheck && (ntwkOff.getGuestType() != GuestType.Isolated || isPrivateNetwork);
+  }
 
     /**
      * Checks for L2 network offering services. Only 2 cases allowed:
