@@ -2985,7 +2985,7 @@ public class QueryManagerImpl extends MutualExclusiveIdsManagerBase implements Q
         if (cpuSpeed != null) {
             SearchCriteria<ServiceOfferingJoinVO> cpuSpeedSearchCriteria = _srvOfferingJoinDao.createSearchCriteria();
             cpuSpeedSearchCriteria.addOr("speed", Op.NULL);
-            cpuSpeedSearchCriteria.addOr("speed", Op.GTEQ, cpuSpeed);
+            cpuSpeedSearchCriteria.addOr("speed", Op.EQ, cpuSpeed);
             sc.addAnd("cpuspeedconstraints", SearchCriteria.Op.SC, cpuSpeedSearchCriteria);
         }
 
