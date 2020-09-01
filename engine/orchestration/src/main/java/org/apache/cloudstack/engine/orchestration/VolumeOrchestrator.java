@@ -36,6 +36,8 @@ import com.cloud.agent.api.to.DatadiskTO;
 import com.cloud.storage.VolumeDetailVO;
 import com.cloud.storage.dao.VMTemplateDetailsDao;
 import com.cloud.utils.StringUtils;
+import com.cloud.vm.UserVmDetailVO;
+import com.cloud.vm.dao.UserVmDetailsDao;
 import org.apache.cloudstack.api.command.admin.vm.MigrateVMCmd;
 import org.apache.cloudstack.api.command.admin.volume.MigrateVolumeCmdByAdmin;
 import org.apache.cloudstack.api.command.user.volume.MigrateVolumeCmd;
@@ -76,7 +78,6 @@ import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
 import org.apache.cloudstack.storage.datastore.db.TemplateDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.TemplateDataStoreVO;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.MapUtils;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.to.DataTO;
@@ -212,6 +213,8 @@ public class VolumeOrchestrator extends ManagerBase implements VolumeOrchestrati
     VMTemplateDetailsDao templateDetailsDao;
     @Inject
     TemplateService templateService;
+    @Inject
+    UserVmDetailsDao userVmDetailsDao;
 
     private final StateMachine2<Volume.State, Volume.Event, Volume> _volStateMachine;
     protected List<StoragePoolAllocator> _storagePoolAllocators;
@@ -793,9 +796,9 @@ public class VolumeOrchestrator extends ManagerBase implements VolumeOrchestrati
         List<DatadiskTO> templateAsIsDisks = null;
         String configurationId = null;
         if (template.isDeployAsIs()) {
-            Map<String, String> vmDetails = vm.getDetails();
-            if (MapUtils.isNotEmpty(vmDetails) && vmDetails.containsKey("configurationId")) {
-                configurationId = vmDetails.get("configurationId");
+            UserVmDetailVO configurationDetail = userVmDetailsDao.findDetail(vm.getId(), "configurationId");
+            if (configurationDetail != null) {
+                configurationId = configurationDetail.getValue();
             }
             templateAsIsDisks = _tmpltMgr.getTemplateDisksOnImageStore(template.getId(), DataStoreRole.Image, configurationId);
             if (CollectionUtils.isNotEmpty(templateAsIsDisks)) {

@@ -391,6 +391,11 @@ public class SnapshotObject implements SnapshotInfo {
     }
 
     @Override
+    public String getDeployAsIsConfiguration() {
+        return null;
+    }
+
+    @Override
     public ObjectInDataStoreStateMachine.State getStatus() {
         return objectInStoreMgr.findObject(this, store).getObjectInStoreState();
     }

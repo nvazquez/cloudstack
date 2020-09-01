@@ -551,7 +551,7 @@ public class VolumeServiceImpl implements VolumeService {
         String deployAsIsConfiguration = volume.getDeployAsIsConfiguration();
         DataObject templateOnPrimaryStoreObj = dataStore.create(template, deployAsIsConfiguration);
 
-        VMTemplateStoragePoolVO templatePoolRef = _tmpltPoolDao.findByPoolTemplate(dataStore.getId(), template.getId(), null);
+        VMTemplateStoragePoolVO templatePoolRef = _tmpltPoolDao.findByPoolTemplate(dataStore.getId(), template.getId(), deployAsIsConfiguration);
         if (templatePoolRef == null) {
             throw new CloudRuntimeException("Failed to find template " + template.getUniqueName() + " in storage pool " + dataStore.getId());
         } else {

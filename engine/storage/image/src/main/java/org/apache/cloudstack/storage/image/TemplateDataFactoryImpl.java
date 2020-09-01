@@ -69,14 +69,16 @@ public class TemplateDataFactoryImpl implements TemplateDataFactory {
     public TemplateInfo getTemplate(long templateId, DataStore store, String configuration) {
         VMTemplateVO templ = imageDataDao.findById(templateId);
         if (store == null && !templ.isDirectDownload()) {
-            TemplateObject tmpl = TemplateObject.getTemplate(templ, null);
+            TemplateObject tmpl = TemplateObject.getTemplate(templ, null, configuration);
             return tmpl;
         }
+        String deployAsIsConfiguration = null;
         // verify if the given input parameters are consistent with our db data.
         boolean found = false;
         if (store.getRole() == DataStoreRole.Primary) {
             VMTemplateStoragePoolVO templatePoolVO = templatePoolDao.findByPoolTemplate(store.getId(), templateId, configuration);
             if (templatePoolVO != null) {
+                deployAsIsConfiguration = templatePoolVO.getDeploymentOption();
                 found = true;
             }
         } else {
@@ -94,7 +96,7 @@ public class TemplateDataFactoryImpl implements TemplateDataFactory {
             }
         }
 
-        TemplateObject tmpl = TemplateObject.getTemplate(templ, store);
+        TemplateObject tmpl = TemplateObject.getTemplate(templ, store, deployAsIsConfiguration);
         return tmpl;
     }
 

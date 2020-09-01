@@ -37,7 +37,7 @@ public interface ObjectInDataStoreManager {
 
     boolean update(DataObject vo, Event event) throws NoTransitionException, ConcurrentOperationException;
 
-    DataObjectInStore findObject(long objId, DataObjectType type, long dataStoreId, DataStoreRole role);
+    DataObjectInStore findObject(long objId, DataObjectType type, long dataStoreId, DataStoreRole role, String deployAsIsConfiguration);
 
     DataObjectInStore findObject(DataObject obj, DataStore store);
 

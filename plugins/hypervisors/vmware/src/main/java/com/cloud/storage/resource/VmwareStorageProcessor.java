@@ -567,7 +567,6 @@ public class VmwareStorageProcessor implements StorageProcessor {
         DataTO srcData = cmd.getSrcTO();
         TemplateObjectTO template = (TemplateObjectTO)srcData;
         DataStoreTO srcStore = srcData.getDataStore();
-        String configurationId = template.getDeployAsIsConfiguration();
 
         if (!(srcStore instanceof NfsTO)) {
             return new CopyCmdAnswer("unsupported protocol");
@@ -577,6 +576,7 @@ public class VmwareStorageProcessor implements StorageProcessor {
         DataTO destData = cmd.getDestTO();
         DataStoreTO destStore = destData.getDataStore();
         DataStoreTO primaryStore = destStore;
+        String configurationId = ((TemplateObjectTO) destData).getDeployAsIsConfiguration();
 
         String secondaryStorageUrl = nfsImageStore.getUrl();
 
@@ -634,7 +634,13 @@ public class VmwareStorageProcessor implements StorageProcessor {
 
         try {
             String storageUuid = managed ? managedStoragePoolName : primaryStore.getUuid();
-            String templateUuidName = deriveTemplateUuidOnHost(hyperHost, storageUuid, templateInfo.second());
+
+            // Generate a new template uuid if the template is marked as deploy-as-is,
+            // as it supports multiple configurations
+            String templateUuidName = template.isDeployAsIs() ?
+                    UUID.randomUUID().toString() :
+                    deriveTemplateUuidOnHost(hyperHost, storageUuid, templateInfo.second());
+
             DatacenterMO dcMo = new DatacenterMO(context, hyperHost.getHyperHostDatacenter());
             VirtualMachineMO templateMo = VmwareHelper.pickOneVmOnRunningHost(dcMo.findVmByNameAndLabel(templateUuidName), true);
             Pair<VirtualMachineMO, Long> vmInfo = null;
@@ -697,6 +703,7 @@ public class VmwareStorageProcessor implements StorageProcessor {
                 newTemplate.setPath(templateUuidName);
             }
 
+            newTemplate.setDeployAsIsConfiguration(configurationId);
             newTemplate.setSize((vmInfo != null)? vmInfo.second() : new Long(0));
 
             return new CopyCmdAnswer(newTemplate);

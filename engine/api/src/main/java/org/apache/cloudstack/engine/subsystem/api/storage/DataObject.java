@@ -48,4 +48,6 @@ public interface DataObject {
     void decRefCount();
 
     Long getRefCount();
+
+    String getDeployAsIsConfiguration();
 }

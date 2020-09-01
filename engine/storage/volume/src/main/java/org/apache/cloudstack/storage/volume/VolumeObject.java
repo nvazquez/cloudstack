@@ -366,7 +366,7 @@ public class VolumeObject implements VolumeInfo {
         if (dataStore == null) {
             throw new CloudRuntimeException("datastore must be set before using this object");
         }
-        DataObjectInStore obj = objectInStoreMgr.findObject(volumeVO.getId(), DataObjectType.VOLUME, dataStore.getId(), dataStore.getRole());
+        DataObjectInStore obj = objectInStoreMgr.findObject(volumeVO.getId(), DataObjectType.VOLUME, dataStore.getId(), dataStore.getRole(), null);
         if (obj.getState() != ObjectInDataStoreStateMachine.State.Ready) {
             return dataStore.getUri() + "&" + EncodingType.OBJTYPE + "=" + DataObjectType.VOLUME + "&" + EncodingType.SIZE + "=" + volumeVO.getSize() + "&" +
                 EncodingType.NAME + "=" + volumeVO.getName();

@@ -63,6 +63,7 @@ public class TemplateObject implements TemplateInfo {
     private DataStore dataStore;
     private String url;
     private String installPath; // temporarily set installPath before passing to resource for entries with empty installPath for object store migration case
+    private String deployAsIsConfiguration; // Temporarily set
     @Inject
     VMTemplateDao imageDao;
     @Inject
@@ -80,8 +81,9 @@ public class TemplateObject implements TemplateInfo {
         this.dataStore = dataStore;
     }
 
-    public static TemplateObject getTemplate(VMTemplateVO vo, DataStore store) {
+    public static TemplateObject getTemplate(VMTemplateVO vo, DataStore store, String configuration) {
         TemplateObject to = ComponentContext.inject(TemplateObject.class);
+        to.deployAsIsConfiguration = configuration;
         to.configure(vo, store);
         return to;
     }
@@ -325,6 +327,11 @@ public class TemplateObject implements TemplateInfo {
             return store.getRefCnt();
         }
         return null;
+    }
+
+    @Override
+    public String getDeployAsIsConfiguration() {
+        return deployAsIsConfiguration;
     }
 
     @Override

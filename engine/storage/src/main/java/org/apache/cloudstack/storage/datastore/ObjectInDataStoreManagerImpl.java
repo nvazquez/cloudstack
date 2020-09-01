@@ -339,11 +339,12 @@ public class ObjectInDataStoreManagerImpl implements ObjectInDataStoreManager {
 
     @Override
     public DataObjectInStore findObject(DataObject obj, DataStore store) {
-        return findObject(obj.getId(), obj.getType(), store.getId(), store.getRole());
+        String deployAsIsConfiguration = obj.getType() == DataObjectType.TEMPLATE ? obj.getDeployAsIsConfiguration() : null;
+        return findObject(obj.getId(), obj.getType(), store.getId(), store.getRole(), deployAsIsConfiguration);
     }
 
     @Override
-    public DataObjectInStore findObject(long objId, DataObjectType type, long dataStoreId, DataStoreRole role) {
+    public DataObjectInStore findObject(long objId, DataObjectType type, long dataStoreId, DataStoreRole role, String deployAsIsConfiguration) {
         DataObjectInStore vo = null;
         if (role == DataStoreRole.Image || role == DataStoreRole.ImageCache) {
             switch (type) {
@@ -358,7 +359,7 @@ public class ObjectInDataStoreManagerImpl implements ObjectInDataStoreManager {
                     break;
             }
         } else if (type == DataObjectType.TEMPLATE && role == DataStoreRole.Primary) {
-            vo = templatePoolDao.findByPoolTemplate(dataStoreId, objId, null);
+            vo = templatePoolDao.findByPoolTemplate(dataStoreId, objId, deployAsIsConfiguration);
         } else if (type == DataObjectType.SNAPSHOT && role == DataStoreRole.Primary) {
             vo = snapshotDataStoreDao.findByStoreSnapshot(role, dataStoreId, objId);
         } else {

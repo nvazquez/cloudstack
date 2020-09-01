@@ -85,6 +85,7 @@ public class TemplateObjectTO implements DataTO {
         }
         this.hypervisorType = template.getHypervisorType();
         this.deployAsIs = template.isDeployAsIs();
+        this.deployAsIsConfiguration = template.getDeployAsIsConfiguration();
     }
 
     @Override
