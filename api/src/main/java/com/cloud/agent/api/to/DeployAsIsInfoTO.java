@@ -19,8 +19,7 @@ package com.cloud.agent.api.to;
 public class DeployAsIsInfoTO {
 
     private boolean deployAsIs;
-    private DataTO templateInSecondary;
-    private DataStoreTO secondaryStore;
+    private String templatePath;
     private String deploymentConfiguration;
 
     public DeployAsIsInfoTO() {
@@ -34,20 +33,12 @@ public class DeployAsIsInfoTO {
         this.deployAsIs = deployAsIs;
     }
 
-    public DataTO getTemplateInSecondary() {
-        return templateInSecondary;
+    public String getTemplatePath() {
+        return templatePath;
     }
 
-    public void setTemplateInSecondary(DataTO templateInSecondaryPath) {
-        this.templateInSecondary = templateInSecondaryPath;
-    }
-
-    public DataStoreTO getSecondaryStore() {
-        return secondaryStore;
-    }
-
-    public void setSecondaryStore(DataStoreTO secondaryStore) {
-        this.secondaryStore = secondaryStore;
+    public void setTemplatePath(String templateInSecondaryPath) {
+        this.templatePath = templateInSecondaryPath;
     }
 
     public String getDeploymentConfiguration() {

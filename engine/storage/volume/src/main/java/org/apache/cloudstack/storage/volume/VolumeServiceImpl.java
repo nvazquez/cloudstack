@@ -726,8 +726,7 @@ public class VolumeServiceImpl implements VolumeService {
     }
 
     @DB
-    protected void createVolumeFromBaseImageAsync(VolumeInfo volume, DataObject templateOnPrimaryStore, PrimaryDataStore pd,
-                                                  AsyncCallFuture<VolumeApiResult> future) {
+    protected void createVolumeFromBaseImageAsync(VolumeInfo volume, DataObject templateOnPrimaryStore, PrimaryDataStore pd, AsyncCallFuture<VolumeApiResult> future) {
         DataObject volumeOnPrimaryStorage = pd.create(volume, volume.getDeployAsIsConfiguration());
         volumeOnPrimaryStorage.processEvent(Event.CreateOnlyRequested);
 
@@ -736,14 +735,15 @@ public class VolumeServiceImpl implements VolumeService {
         caller.setCallback(caller.getTarget().createVolumeFromBaseImageCallBack(null, null));
         caller.setContext(context);
 
-        motionSrv.copyAsync(context.templateOnStore, volumeOnPrimaryStorage, caller);
+        if (!volume.isDeployAsIs()) {
+            motionSrv.copyAsync(context.templateOnStore, volumeOnPrimaryStorage, caller);
+        } else {
+            CopyCommandResult result = new CopyCommandResult(null, null);
+            result.setSuccess(true);
+            caller.complete(result);
+        }
 
         return;
-    }
-
-    @DB
-    protected Void createTemplateAsIsCallback(AsyncCallbackDispatcher<VolumeServiceImpl, CopyCommandResult> callback, AsyncCallFuture<VolumeApiResult> context) {
-        return null;
     }
 
     @DB

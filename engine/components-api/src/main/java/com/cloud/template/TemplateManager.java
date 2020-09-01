@@ -136,6 +136,4 @@ public interface TemplateManager {
     public static final String MESSAGE_RESET_TEMPLATE_PERMISSION_EVENT = "Message.ResetTemplatePermission.Event";
 
     List<DatadiskTO> getTemplateDisksOnImageStore(Long templateId, DataStoreRole role, String configurationId);
-
-    void prepareDeployAsIsProfile(VirtualMachineProfile profile, DeployDestination dest);
 }

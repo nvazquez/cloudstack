@@ -17,8 +17,6 @@
 package com.cloud.hypervisor.guru;
 
 import com.cloud.agent.api.storage.OVFPropertyTO;
-import com.cloud.agent.api.to.DataStoreTO;
-import com.cloud.agent.api.to.DataTO;
 import com.cloud.agent.api.to.DeployAsIsInfoTO;
 import com.cloud.agent.api.to.DiskTO;
 import com.cloud.agent.api.to.NicTO;
@@ -35,7 +33,6 @@ import com.cloud.network.NetworkModel;
 import com.cloud.network.Networks;
 import com.cloud.network.dao.NetworkDao;
 import com.cloud.network.dao.NetworkVO;
-import com.cloud.storage.DataStoreRole;
 import com.cloud.storage.GuestOSHypervisorVO;
 import com.cloud.storage.GuestOSVO;
 import com.cloud.storage.ImageStore;
@@ -57,7 +54,6 @@ import com.cloud.vm.dao.NicDao;
 import org.apache.cloudstack.api.ApiConstants;
 import org.apache.cloudstack.storage.datastore.db.PrimaryDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
-import org.apache.cloudstack.storage.to.TemplateObjectTO;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.log4j.Logger;
@@ -189,8 +185,7 @@ class VmwareVmImplementer {
         if (deployAsIs) {
             List<OVFPropertyTO> ovfProperties = getOvfPropertyList(vm, details);
             handleOvfProperties(vm, to, details, ovfProperties);
-            setDeployAsIsParams(vm, to, details);
-            storeTemplateLocationInTO(vm, to, host.getId());
+            setDeployAsIsParams(vm, to, host.getId(), details);
         }
 
         setDetails(to, details);
@@ -198,66 +193,24 @@ class VmwareVmImplementer {
         return to;
     }
 
-    private void setDeployAsIsParams(VirtualMachineProfile vm, VirtualMachineTO to, Map<String, String> details) {
+    private void setDeployAsIsParams(VirtualMachineProfile vm, VirtualMachineTO to, long hostId, Map<String, String> details) {
         DeployAsIsInfoTO info = new DeployAsIsInfoTO();
-        Object template = vm.getParameter(VirtualMachineProfile.Param.DeployAsIsTemplate);
-        if (template != null) {
-            info.setTemplateInSecondary((DataTO) template);
-        }
-        Object store = vm.getParameter(VirtualMachineProfile.Param.DeployAsIsTemplateStore);
-        if (store != null) {
-            info.setSecondaryStore((DataStoreTO) store);
-        }
+
+        String configuration = null;
         if (details.containsKey("configurationId")) {
-            info.setDeploymentConfiguration(details.get("configurationId"));
+            configuration = details.get("configurationId");
+            info.setDeploymentConfiguration(configuration);
         }
+
+        String deployAsIsStoreUuid = vm.getDisks().get(0).getData().getDataStore().getUuid();
+        StoragePoolVO storagePoolVO = storagePoolDao.findByUuid(deployAsIsStoreUuid);
+        VMTemplateStoragePoolVO tmplRef = templateStoragePoolDao.findByPoolTemplate(storagePoolVO.getId(), vm.getTemplate().getId(), configuration);
+        if (tmplRef != null) {
+            info.setTemplatePath(tmplRef.getInstallPath());
+        }
+
         info.setDeployAsIs(true);
         to.setDeployAsIsInfo(info);
-    }
-
-    private void storeTemplateLocationInTO(VirtualMachineProfile vm, VirtualMachineTO to, long hostId) {
-        VMTemplateStoragePoolVO templateStoragePoolVO = templateStoragePoolDao.findByHostTemplate(hostId, vm.getTemplate().getId());
-        if (templateStoragePoolVO != null) {
-            long storePoolId = templateStoragePoolVO.getDataStoreId();
-
-            StoragePoolVO storagePoolVO = storagePoolDao.findById(storePoolId);
-            String relativeLocation = storagePoolVO.getUuid();
-
-            String templateName = templateStoragePoolVO.getInstallPath();
-            createDiskTOForTemplateOVA(vm, storagePoolVO);
-
-            to.setTemplateName(templateName);
-            to.setTemplateLocation(relativeLocation);
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace(String.format("deploying '%s' OVA as is from %s.", templateName, relativeLocation));
-            }
-        }
-    }
-
-    private void createDiskTOForTemplateOVA(VirtualMachineProfile vm, StoragePoolVO storagePoolVO) {
-        DiskTO disk = new DiskTO();
-        TemplateObjectTO data = new TemplateObjectTO(vm.getTemplate());
-        DataStoreTO store = new DataStoreTO() {
-            @Override public DataStoreRole getRole() {
-                return DataStoreRole.ImageCache;
-            }
-
-            @Override public String getUuid() {
-                return storagePoolVO.getUuid();
-            }
-
-            @Override public String getUrl() {
-                return null;
-            }
-
-            @Override public String getPathSeparator() {
-                return "/";
-            }
-        };
-        data.setDataStore(store);
-        disk.setData(data);
-
-        vm.addDisk(disk);
     }
 
     private void setDetails(VirtualMachineTO to, Map<String, String> details) {

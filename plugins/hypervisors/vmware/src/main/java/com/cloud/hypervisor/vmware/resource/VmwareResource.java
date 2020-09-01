@@ -46,6 +46,7 @@ import javax.naming.ConfigurationException;
 import javax.xml.datatype.XMLGregorianCalendar;
 
 import com.cloud.agent.api.to.DataTO;
+import com.cloud.agent.api.to.DeployAsIsInfoTO;
 import com.cloud.storage.ImageStore;
 import org.apache.cloudstack.api.ApiConstants;
 import org.apache.cloudstack.storage.command.CopyCommand;
@@ -1782,21 +1783,18 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
             }
 
             DiskTO[] specDisks = vmSpec.getDisks();
-            /*DeployAsIsInfoTO deployAsIsInfo = vmSpec.getDeployAsIsInfo();
+            DeployAsIsInfoTO deployAsIsInfo = vmSpec.getDeployAsIsInfo();
             boolean installAsIs = deployAsIsInfo != null && deployAsIsInfo.isDeployAsIs();
             if (installAsIs && dcMo.findVm(vmInternalCSName) == null) {
                 if (s_logger.isTraceEnabled()) {
-                    s_logger.trace("deploying OVA from as is");
+                    s_logger.trace("Deploying OVA from as is");
                 }
+                String deployAsIsTemplate = deployAsIsInfo.getTemplatePath();
                 String destDatastore = getDatastoreFromSpecDisks(specDisks);
                 String deploymentConfiguration = deployAsIsInfo.getDeploymentConfiguration();
-                DataStoreTO sourceStore = deployAsIsInfo.getSecondaryStore();
-                DataTO templateInSecondary = deployAsIsInfo.getTemplateInSecondary();
-                vmInVcenter = _storageProcessor.deployOVFTemplateFromSecondaryToPrimary(sourceStore, templateInSecondary,
-                        context, hyperHost, dcMo, destDatastore, vmInternalCSName, deploymentConfiguration);
-                //vmInVcenter = _storageProcessor.cloneVMFromTemplate(vmSpec.getTemplateName(), vmInternalCSName, destDatastore);
+                vmInVcenter = _storageProcessor.cloneVMFromTemplate(deployAsIsTemplate, vmInternalCSName, destDatastore);
                 mapSpecDisksToClonedDisks(vmInVcenter, vmInternalCSName, specDisks);
-            }*/
+            }
 
             String guestOsId = translateGuestOsIdentifier(vmSpec.getArch(), vmSpec.getOs(), vmSpec.getPlatformEmulator()).value();
             DiskTO[] disks = validateDisks(vmSpec.getDisks());
@@ -2329,7 +2327,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
             List<OVFPropertyTO> ovfProperties = vmSpec.getOvfProperties();
             VmConfigInfo templateVappConfig;
             if (ovfProperties != null) {
-                VirtualMachineMO templateVMmo = dcMo.findVm(vmSpec.getTemplateName());
+                VirtualMachineMO templateVMmo = dcMo.findVm(deployAsIsInfo.getTemplatePath());
                 templateVappConfig = templateVMmo.getConfigInfo().getVAppConfig();
                 // Set OVF properties (if available)
                 if (CollectionUtils.isNotEmpty(ovfProperties)) {

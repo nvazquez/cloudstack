@@ -2224,18 +2224,4 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
         return _tmpltSvr.getTemplateDatadisksOnImageStore(templateObject, configurationId);
     }
 
-    @Override
-    public void prepareDeployAsIsProfile(VirtualMachineProfile profile, DeployDestination dest) {
-        if (profile == null || profile.getTemplate() == null || !profile.getTemplate().isDeployAsIs()) {
-            return;
-        }
-        TemplateInfo template = _tmplFactory.getTemplate(profile.getTemplateId(), DataStoreRole.Image);
-        if (template == null) {
-            String msg = String.format("Could not find template %s downloaded on store with role %s", profile.getTemplateId(), DataStoreRole.Image.toString());
-            s_logger.error(msg);
-            throw new CloudRuntimeException(msg);
-        }
-        profile.setParameter(VirtualMachineProfile.Param.DeployAsIsTemplate, template.getTO());
-        profile.setParameter(VirtualMachineProfile.Param.DeployAsIsTemplateStore, template.getDataStore().getTO());
-    }
 }

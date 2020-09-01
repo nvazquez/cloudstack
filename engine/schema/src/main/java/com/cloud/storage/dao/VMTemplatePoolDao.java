@@ -47,7 +47,7 @@ public interface VMTemplatePoolDao extends GenericDao<VMTemplateStoragePoolVO, L
 
     boolean templateAvailable(long templateId, long poolId);
 
-    VMTemplateStoragePoolVO findByHostTemplate(Long hostId, Long templateId);
+    VMTemplateStoragePoolVO findByHostTemplate(Long hostId, Long templateId, String configuration);
 
     VMTemplateStoragePoolVO findByPoolPath(Long poolId, String path);
 

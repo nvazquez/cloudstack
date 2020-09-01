@@ -69,8 +69,6 @@ public interface VirtualMachineProfile {
         public static final Param BootType = new Param("BootType");
         public static final Param BootIntoSetup = new Param("enterHardwareSetup");
         public static final Param PreserveNics = new Param("PreserveNics");
-        public static final Param DeployAsIsTemplate = new Param("DeployAsIsTemplate");
-        public static final Param DeployAsIsTemplateStore = new Param("DeployAsIsTemplateStore");
 
         private String name;
 
