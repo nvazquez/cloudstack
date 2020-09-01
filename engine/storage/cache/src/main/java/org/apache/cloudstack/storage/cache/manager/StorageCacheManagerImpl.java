@@ -291,7 +291,7 @@ public class StorageCacheManagerImpl implements StorageCacheManager, Manager {
 
                 if (st == ObjectInDataStoreStateMachine.State.Ready) {
                     s_logger.debug("there is already one in the cache store");
-                    DataObject dataObj = objectInStoreMgr.get(data, store);
+                    DataObject dataObj = objectInStoreMgr.get(data, store, null);
                     dataObj.incRefCount();
                     existingDataObj = dataObj;
                 }
@@ -299,7 +299,7 @@ public class StorageCacheManagerImpl implements StorageCacheManager, Manager {
 
             if(existingDataObj == null) {
                 s_logger.debug("create " + typeName + " cache entry(id: " + dataId + ") on store(id: " + storeId + ")");
-                objOnCacheStore = store.create(data);
+                objOnCacheStore = store.create(data, null);
             }
             lock.notifyAll();
         }
@@ -361,7 +361,7 @@ public class StorageCacheManagerImpl implements StorageCacheManager, Manager {
     @Override
     public DataObject getCacheObject(DataObject data, Scope scope) {
         DataStore cacheStore = getCacheStorage(scope);
-        DataObject objOnCacheStore = cacheStore.create(data);
+        DataObject objOnCacheStore = cacheStore.create(data, null);
         objOnCacheStore.incRefCount();
         return objOnCacheStore;
     }

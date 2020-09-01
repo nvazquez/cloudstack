@@ -66,7 +66,7 @@ public class TemplateDataFactoryImpl implements TemplateDataFactory {
     PrimaryDataStoreDao primaryDataStoreDao;
 
     @Override
-    public TemplateInfo getTemplate(long templateId, DataStore store) {
+    public TemplateInfo getTemplate(long templateId, DataStore store, String configuration) {
         VMTemplateVO templ = imageDataDao.findById(templateId);
         if (store == null && !templ.isDirectDownload()) {
             TemplateObject tmpl = TemplateObject.getTemplate(templ, null);
@@ -75,7 +75,7 @@ public class TemplateDataFactoryImpl implements TemplateDataFactory {
         // verify if the given input parameters are consistent with our db data.
         boolean found = false;
         if (store.getRole() == DataStoreRole.Primary) {
-            VMTemplateStoragePoolVO templatePoolVO = templatePoolDao.findByPoolTemplate(store.getId(), templateId);
+            VMTemplateStoragePoolVO templatePoolVO = templatePoolDao.findByPoolTemplate(store.getId(), templateId, configuration);
             if (templatePoolVO != null) {
                 found = true;
             }
@@ -105,7 +105,7 @@ public class TemplateDataFactoryImpl implements TemplateDataFactory {
         if (tmplStore != null) {
             store = storeMgr.getDataStore(tmplStore.getDataStoreId(), storeRole);
         }
-        return this.getTemplate(templateId, store);
+        return this.getTemplate(templateId, store, null);
     }
 
     @Override
@@ -115,7 +115,7 @@ public class TemplateDataFactoryImpl implements TemplateDataFactory {
         if (tmplStore != null) {
             store = storeMgr.getDataStore(tmplStore.getDataStoreId(), storeRole);
         }
-        return this.getTemplate(templateId, store);
+        return this.getTemplate(templateId, store, null);
     }
 
     @Override
@@ -123,15 +123,15 @@ public class TemplateDataFactoryImpl implements TemplateDataFactory {
         TemplateDataStoreVO tmplStore = templateStoreDao.findByTemplateZoneReady(templateId, zoneId);
         if (tmplStore != null) {
             DataStore store = storeMgr.getDataStore(tmplStore.getDataStoreId(), DataStoreRole.Image);
-            return this.getTemplate(templateId, store);
+            return this.getTemplate(templateId, store, null);
         } else {
             return null;
         }
     }
 
     @Override
-    public TemplateInfo getTemplate(DataObject obj, DataStore store) {
-        TemplateObject tmpObj = (TemplateObject)this.getTemplate(obj.getId(), store);
+    public TemplateInfo getTemplate(DataObject obj, DataStore store, String configuration) {
+        TemplateObject tmpObj = (TemplateObject)this.getTemplate(obj.getId(), store, configuration);
         // carry over url set in passed in data object, for copyTemplate case
         // where url is generated on demand and not persisted in DB.
         // need to think of a more generic way to pass these runtime information
@@ -146,7 +146,7 @@ public class TemplateDataFactoryImpl implements TemplateDataFactory {
         TemplateDataStoreVO tmplStore = templateStoreDao.findReadyOnCache(templateId);
         if (tmplStore != null) {
             DataStore store = storeMgr.getDataStore(tmplStore.getDataStoreId(), DataStoreRole.ImageCache);
-            return getTemplate(templateId, store);
+            return getTemplate(templateId, store, null);
         } else {
             return null;
         }
@@ -159,7 +159,7 @@ public class TemplateDataFactoryImpl implements TemplateDataFactory {
         for (TemplateDataStoreVO cacheTmpl : cacheTmpls) {
             long storeId = cacheTmpl.getDataStoreId();
             DataStore store = storeMgr.getDataStore(storeId, DataStoreRole.ImageCache);
-            TemplateInfo tmplObj = getTemplate(templateId, store);
+            TemplateInfo tmplObj = getTemplate(templateId, store, null);
             tmplObjs.add(tmplObj);
         }
         return tmplObjs;
@@ -217,12 +217,12 @@ public class TemplateDataFactoryImpl implements TemplateDataFactory {
         if (pool == null) {
             throw new CloudRuntimeException("No storage pool found where to download template: " + templateId);
         }
-        VMTemplateStoragePoolVO spoolRef = templatePoolDao.findByPoolTemplate(pool, templateId);
+        VMTemplateStoragePoolVO spoolRef = templatePoolDao.findByPoolTemplate(pool, templateId, null);
         if (spoolRef == null) {
             directDownloadManager.downloadTemplate(templateId, pool, hostId);
         }
         DataStore store = storeMgr.getDataStore(pool, DataStoreRole.Primary);
-        return this.getTemplate(templateId, store);
+        return this.getTemplate(templateId, store, null);
     }
 
     @Override

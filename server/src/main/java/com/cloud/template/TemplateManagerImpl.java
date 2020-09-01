@@ -563,7 +563,7 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
         // Handle NFS to S3 object store migration case, we trigger template sync from NFS to S3 during extract template or copy template
         _tmpltSvr.syncTemplateToRegionStore(templateId, tmpltStore);
 
-        TemplateInfo templateObject = _tmplFactory.getTemplate(templateId, tmpltStore);
+        TemplateInfo templateObject = _tmplFactory.getTemplate(templateId, tmpltStore, null);
         String extractUrl = tmpltStore.createEntityExtractUrl(templateObject.getInstallPath(), template.getFormat(), templateObject);
         tmpltStoreRef.setExtractUrl(extractUrl);
         tmpltStoreRef.setExtractUrlCreated(DateUtil.now());
@@ -658,7 +658,7 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
         VMTemplateStoragePoolVO templateStoragePoolRef = null;
         TemplateDataStoreVO templateStoreRef = null;
 
-        templateStoragePoolRef = _tmpltPoolDao.findByPoolTemplate(poolId, templateId);
+        templateStoragePoolRef = _tmpltPoolDao.findByPoolTemplate(poolId, templateId, null);
         if (templateStoragePoolRef != null) {
             templateStoragePoolRef.setMarkedForGC(false);
             _tmpltPoolDao.update(templateStoragePoolRef.getId(), templateStoragePoolRef);
@@ -688,7 +688,7 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
                 s_logger.debug("Downloading template " + templateId + " to pool " + poolId);
             }
             DataStore srcSecStore = _dataStoreMgr.getDataStore(templateStoreRef.getDataStoreId(), DataStoreRole.Image);
-            TemplateInfo srcTemplate = _tmplFactory.getTemplate(templateId, srcSecStore);
+            TemplateInfo srcTemplate = _tmplFactory.getTemplate(templateId, srcSecStore, null);
 
             AsyncCallFuture<TemplateApiResult> future = _tmpltSvr.prepareTemplateOnPrimary(srcTemplate, pool);
             try {
@@ -698,7 +698,7 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
                     return null;
                 }
 
-                return _tmpltPoolDao.findByPoolTemplate(poolId, templateId);
+                return _tmpltPoolDao.findByPoolTemplate(poolId, templateId, null);
             } catch (Exception ex) {
                 s_logger.debug("failed to copy template from image store:" + srcSecStore.getName() + " to primary storage");
             }
@@ -774,7 +774,7 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
             copyEventType = EventTypes.EVENT_TEMPLATE_COPY;
         }
 
-        TemplateInfo srcTemplate = _tmplFactory.getTemplate(template.getId(), srcSecStore);
+        TemplateInfo srcTemplate = _tmplFactory.getTemplate(template.getId(), srcSecStore, null);
         // Copy will just find one eligible image store for the destination zone
         // and copy template there, not propagate to all image stores
         // for that zone
@@ -807,7 +807,7 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
                 if (dataDiskTemplates != null && !dataDiskTemplates.isEmpty()) {
                     for (VMTemplateVO dataDiskTemplate : dataDiskTemplates) {
                         s_logger.debug("Copying " + dataDiskTemplates.size() + " for source template " + template.getId() + ". Copy all Datadisk templates to destination datastore " + dstSecStore.getName());
-                        TemplateInfo srcDataDiskTemplate = _tmplFactory.getTemplate(dataDiskTemplate.getId(), srcSecStore);
+                        TemplateInfo srcDataDiskTemplate = _tmplFactory.getTemplate(dataDiskTemplate.getId(), srcSecStore, null);
                         AsyncCallFuture<TemplateApiResult> dataDiskCopyFuture = _tmpltSvr.copyTemplate(srcDataDiskTemplate, dstSecStore);
                         try {
                             TemplateApiResult dataDiskCopyResult = dataDiskCopyFuture.get();
@@ -1010,7 +1010,7 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
         }
 
         PrimaryDataStore pool = (PrimaryDataStore)_dataStoreMgr.getPrimaryDataStore(templatePoolVO.getPoolId());
-        TemplateInfo template = _tmplFactory.getTemplate(templatePoolRef.getTemplateId(), pool);
+        TemplateInfo template = _tmplFactory.getTemplate(templatePoolRef.getTemplateId(), pool, null);
 
         try {
             if (s_logger.isDebugEnabled()) {
@@ -2214,13 +2214,28 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
     }
 
     @Override
-    public List<DatadiskTO> getTemplateDisksOnImageStore(Long templateId, DataStoreRole role) {
+    public List<DatadiskTO> getTemplateDisksOnImageStore(Long templateId, DataStoreRole role, String configurationId) {
         TemplateInfo templateObject = _tmplFactory.getTemplate(templateId, role);
         if (templateObject == null) {
             String msg = String.format("Could not find template %s downloaded on store with role %s", templateId, role.toString());
             s_logger.error(msg);
             throw new CloudRuntimeException(msg);
         }
-        return _tmpltSvr.getTemplateDatadisksOnImageStore(templateObject);
+        return _tmpltSvr.getTemplateDatadisksOnImageStore(templateObject, configurationId);
+    }
+
+    @Override
+    public void prepareDeployAsIsProfile(VirtualMachineProfile profile, DeployDestination dest) {
+        if (profile == null || profile.getTemplate() == null || !profile.getTemplate().isDeployAsIs()) {
+            return;
+        }
+        TemplateInfo template = _tmplFactory.getTemplate(profile.getTemplateId(), DataStoreRole.Image);
+        if (template == null) {
+            String msg = String.format("Could not find template %s downloaded on store with role %s", profile.getTemplateId(), DataStoreRole.Image.toString());
+            s_logger.error(msg);
+            throw new CloudRuntimeException(msg);
+        }
+        profile.setParameter(VirtualMachineProfile.Param.DeployAsIsTemplate, template.getTO());
+        profile.setParameter(VirtualMachineProfile.Param.DeployAsIsTemplateStore, template.getDataStore().getTO());
     }
 }

@@ -87,7 +87,7 @@ public class StorageCacheReplacementAlgorithmLRU implements StorageCacheReplacem
         sc.and(sc.entity().getRefCnt(), SearchCriteria.Op.EQ, 0);
         TemplateDataStoreVO template = sc.find();
         if (template != null) {
-            return templateFactory.getTemplate(template.getTemplateId(), store);
+            return templateFactory.getTemplate(template.getTemplateId(), store, null);
         }
 
         QueryBuilder<VolumeDataStoreVO> volSc = QueryBuilder.create(VolumeDataStoreVO.class);

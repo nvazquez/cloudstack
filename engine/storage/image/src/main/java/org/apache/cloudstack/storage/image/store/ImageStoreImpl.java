@@ -141,7 +141,8 @@ public class ImageStoreImpl implements ImageStoreEntity {
     }
 
     @Override
-    public DataObject create(DataObject obj) {
+    public DataObject create(DataObject obj, String configuration) {
+        // Configuration is not used in secondary storage
         DataObject object = objectInStoreMgr.create(obj, this);
         return object;
     }
@@ -218,8 +219,8 @@ public class ImageStoreImpl implements ImageStoreEntity {
     }
 
     @Override
-    public List<DatadiskTO> getDataDiskTemplates(DataObject obj) {
-        return driver.getDataDiskTemplates(obj);
+    public List<DatadiskTO> getDataDiskTemplates(DataObject obj, String configurationId) {
+        return driver.getDataDiskTemplates(obj, configurationId);
     }
 
     @Override

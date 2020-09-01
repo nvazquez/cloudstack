@@ -22,6 +22,7 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -229,93 +230,127 @@ public class OVFHelper {
         return getEulaSectionsFromDocument(doc);
     }
 
-    public List<DatadiskTO> getOVFVolumeInfoFromFile(final String ovfFilePath) throws InternalErrorException {
+    public List<DatadiskTO> getOVFVolumeInfoFromFile(final String ovfFilePath, final String configurationId) throws InternalErrorException {
         if (StringUtils.isBlank(ovfFilePath)) {
             return new ArrayList<>();
         }
         Document doc = getDocumentFromFile(ovfFilePath);
 
-        return getOVFVolumeInfoFromFile(ovfFilePath, doc);
+        return getOVFVolumeInfoFromFile(ovfFilePath, doc, configurationId);
     }
 
-    public List<DatadiskTO> getOVFVolumeInfoFromFile(String ovfFilePath, Document doc) throws InternalErrorException {
+    public List<DatadiskTO> getOVFVolumeInfoFromFile(String ovfFilePath, Document doc, String configurationId) throws InternalErrorException {
         if (org.apache.commons.lang.StringUtils.isBlank(ovfFilePath)) {
             return null;
         }
 
         File ovfFile = new File(ovfFilePath);
-        NodeList disks = doc.getElementsByTagName("Disk");
-        NodeList files = doc.getElementsByTagName("File");
-        NodeList items = doc.getElementsByTagName("Item");
-        List<OVFFile> vf = extractFilesFromOvfDocumentTree(ovfFile, files);
+        List<OVFVirtualHardwareItemTO> hardwareItems = getVirtualHardwareItemsFromDocumentTree(doc);
+        List<OVFFile> files = extractFilesFromOvfDocumentTree(ovfFile, doc);
+        List<OVFDisk> disks = extractDisksFromOvfDocumentTree(doc);
 
-        List<OVFDisk> vd = extractDisksFromOvfDocumentTree(disks, items);
-
-        List<DatadiskTO> diskTOs = matchDisksToFilesAndGenerateDiskTOs(ovfFile, vf, vd);
-
-        moveFirstIsoToEndOfDiskList(diskTOs);
-
+        List<OVFVirtualHardwareItemTO> diskHardwareItems = hardwareItems.stream()
+                .filter(x -> x.getResourceType() == OVFVirtualHardwareItemTO.HardwareResourceType.DiskDrive &&
+                        hardwareItemContainsConfiguration(x, configurationId))
+                .collect(Collectors.toList());
+        List<DatadiskTO> diskTOs = matchHardwareItemsToDiskAndFilesInformation(diskHardwareItems, files, disks, ovfFile.getParent());
         return diskTOs;
     }
 
-    /**
-     * check if first disk is an iso move it to the end. the semantics of this are not complete as more than one ISO may be there and theoretically an OVA may only contain ISOs
-     *
-     */
-    private void moveFirstIsoToEndOfDiskList(List<DatadiskTO> diskTOs) {
-        if (CollectionUtils.isNotEmpty(diskTOs)) {
-            DatadiskTO fd = diskTOs.get(0);
-            if (fd.isIso()) {
-                if (s_logger.isDebugEnabled()) {
-                    s_logger.debug("moving first disk to the end as it is an ISO");
-                }
-                diskTOs.remove(0);
-                diskTOs.add(fd);
-            }
+    private String extractDiskIdFromDiskHostResource(String hostResource) {
+        if (hostResource.startsWith("ovf:/disk/")) {
+            return hostResource.replace("ovf:/disk/", "");
         }
+        String[] resourceParts = hostResource.split("/");
+        return resourceParts[resourceParts.length - 1];
     }
 
-    private List<DatadiskTO> matchDisksToFilesAndGenerateDiskTOs(File ovfFile, List<OVFFile> vf, List<OVFDisk> vd) throws InternalErrorException {
-        List<DatadiskTO> diskTOs = new ArrayList<>();
-        int diskNumber = 0;
-        for (OVFFile of : vf) {
-            if (StringUtils.isBlank(of._id)){
-                s_logger.error("The ovf file info is incomplete file info");
-                throw new InternalErrorException("The ovf file info has incomplete file info");
+    private OVFDisk getDiskDefinitionFromDiskId(String diskId, List<OVFDisk> disks) {
+        for (OVFDisk disk : disks) {
+            if (disk._diskId.equalsIgnoreCase(diskId)) {
+                return disk;
             }
-            OVFDisk cdisk = getDisk(of._id, vd);
-            if (cdisk == null && !of.isIso){
-                s_logger.error("The ovf file info has incomplete disk info");
-                throw new InternalErrorException("The ovf file info has incomplete disk info");
-            }
-            Long capacity = cdisk == null ? of._size : cdisk._capacity;
-            String controller = "";
-            String controllerSubType = "";
-            if (cdisk != null) {
-                OVFDiskController cDiskController = cdisk._controller;
-                controller = cDiskController == null ? "" : cdisk._controller._name;
-                controllerSubType = cDiskController == null ? "" : cdisk._controller._subType;
-            }
+        }
+        return null;
+    }
 
-            String dataDiskPath = ovfFile.getParent() + File.separator + of._href;
-            File f = new File(dataDiskPath);
-            if (!f.exists() || f.isDirectory()) {
-                s_logger.error("One of the attached disk or iso does not exists " + dataDiskPath);
-                throw new InternalErrorException("One of the attached disk or iso as stated on OVF does not exists " + dataDiskPath);
+    private List<DatadiskTO> matchHardwareItemsToDiskAndFilesInformation(List<OVFVirtualHardwareItemTO> diskHardwareItems,
+                                                                         List<OVFFile> files, List<OVFDisk> disks,
+                                                                         String ovfParentPath) throws InternalErrorException {
+        List<DatadiskTO> diskTOs = new LinkedList<>();
+        int diskNumber = 0;
+        for (OVFVirtualHardwareItemTO diskItem : diskHardwareItems) {
+            if (StringUtils.isBlank(diskItem.getHostResource())) {
+                s_logger.error("Missing disk information for hardware item " + diskItem.getElementName() + " " + diskItem.getInstanceId());
+                continue;
             }
-            diskTOs.add(new DatadiskTO(dataDiskPath, capacity, of._size, of._id, of.isIso, of._bootable, controller, controllerSubType, diskNumber));
+            String diskId = extractDiskIdFromDiskHostResource(diskItem.getHostResource());
+            OVFDisk diskDefinition = getDiskDefinitionFromDiskId(diskId, disks);
+            if (diskDefinition == null) {
+                s_logger.error("Missing disk definition for disk ID " + diskId);
+            }
+            OVFFile fileDefinition = getFileDefinitionFromDiskDefinition(diskDefinition._fileRef, files);
+            DatadiskTO datadiskTO = generateDiskTO(fileDefinition, diskDefinition, ovfParentPath, diskNumber, diskItem);
+            diskTOs.add(datadiskTO);
             diskNumber++;
         }
-        if (s_logger.isTraceEnabled()) {
-            s_logger.trace(String.format("found %d file definitions in %s",diskTOs.size(), ovfFile.getPath()));
+        List<OVFFile> isoFiles = files.stream().filter(x -> x.isIso).collect(Collectors.toList());
+        for (OVFFile isoFile : isoFiles) {
+            DatadiskTO isoTO = generateDiskTO(isoFile, null, ovfParentPath, diskNumber, null);
+            diskTOs.add(isoTO);
+            diskNumber++;
         }
         return diskTOs;
     }
 
-    private List<OVFDisk> extractDisksFromOvfDocumentTree(NodeList disks, NodeList items) {
+    private DatadiskTO generateDiskTO(OVFFile file, OVFDisk disk, String ovfParentPath, int diskNumber,
+                                      OVFVirtualHardwareItemTO diskItem) throws InternalErrorException {
+        String path = file != null ? ovfParentPath + File.separator + file._href : null;
+        if (StringUtils.isNotBlank(path)) {
+            File f = new File(path);
+            if (!f.exists() || f.isDirectory()) {
+                s_logger.error("One of the attached disk or iso does not exists " + path);
+                throw new InternalErrorException("One of the attached disk or iso as stated on OVF does not exists " + path);
+            }
+        }
+        Long capacity = disk != null ? disk._capacity : file._size;
+        Long fileSize = file != null ? file._size : 0L;
+
+        String controller = "";
+        String controllerSubType = "";
+        if (disk != null) {
+            OVFDiskController cDiskController = disk._controller;
+            controller = cDiskController == null ? "" : disk._controller._name;
+            controllerSubType = cDiskController == null ? "" : disk._controller._subType;
+        }
+
+        boolean isIso = file != null && file.isIso;
+        boolean bootable = file != null && file._bootable;
+        String diskId = disk == null ? file._id : disk._diskId;
+        String configuration = diskItem != null ? diskItem.getConfigurationIds() : null;
+        return new DatadiskTO(path, capacity, fileSize, diskId,
+                isIso, bootable, controller, controllerSubType, diskNumber, configuration);
+    }
+
+    protected List<OVFDisk> extractDisksFromOvfDocumentTree(Document doc) {
+        NodeList disks = doc.getElementsByTagName("Disk");
+        NodeList ovfDisks = doc.getElementsByTagName("ovf:Disk");
+        NodeList items = doc.getElementsByTagName("Item");
+
+        int totalDisksLength = disks.getLength() + ovfDisks.getLength();
         ArrayList<OVFDisk> vd = new ArrayList<>();
-        for (int i = 0; i < disks.getLength(); i++) {
-            Element disk = (Element)disks.item(i);
+        for (int i = 0; i < totalDisksLength; i++) {
+            Element disk;
+            if (i >= disks.getLength()) {
+                int pos = i - disks.getLength();
+                disk = (Element) ovfDisks.item(pos);
+            } else {
+                disk = (Element) disks.item(i);
+            }
+
+            if (disk == null) {
+                continue;
+            }
             OVFDisk od = new OVFDisk();
             String virtualSize = getNodeAttribute(disk, "ovf", "capacity");
             od._capacity = NumberUtils.toLong(virtualSize, 0L);
@@ -344,7 +379,8 @@ public class OVFHelper {
         return vd;
     }
 
-    private List<OVFFile> extractFilesFromOvfDocumentTree( File ovfFile, NodeList files) {
+    protected List<OVFFile> extractFilesFromOvfDocumentTree(File ovfFile, Document doc) {
+        NodeList files = doc.getElementsByTagName("File");
         ArrayList<OVFFile> vf = new ArrayList<>();
         boolean toggle = true;
         for (int j = 0; j < files.getLength(); j++) {
@@ -528,10 +564,10 @@ public class OVFHelper {
         }
     }
 
-    OVFDisk getDisk(String fileRef, List<OVFDisk> disks) {
-        for (OVFDisk disk : disks) {
-            if (disk._fileRef.equals(fileRef)) {
-                return disk;
+    OVFFile getFileDefinitionFromDiskDefinition(String fileRef, List<OVFFile> files) {
+        for (OVFFile file : files) {
+            if (file._id.equals(fileRef)) {
+                return file;
             }
         }
         return null;
@@ -653,6 +689,19 @@ public class OVFHelper {
         return nets;
     }
 
+    private boolean hardwareItemContainsConfiguration(OVFVirtualHardwareItemTO item, String configurationId) {
+        if (StringUtils.isBlank(configurationId) || StringUtils.isBlank(item.getConfigurationIds())) {
+            return true;
+        }
+        String configurationIds = item.getConfigurationIds();
+        if (StringUtils.isNotBlank(configurationIds)) {
+            String[] configurations = configurationIds.split(" ");
+            List<String> confList = Arrays.asList(configurations);
+            return confList.contains(configurationId);
+        }
+        return false;
+    }
+
     /**
      * Retrieve the virtual hardware section and its deployment options as configurations
      */
@@ -663,7 +712,7 @@ public class OVFHelper {
             for (OVFConfigurationTO configuration : configurations) {
                 List<OVFVirtualHardwareItemTO> confItems = items.stream().
                         filter(x -> StringUtils.isNotBlank(x.getConfigurationIds())
-                                && x.getConfigurationIds().toLowerCase().contains(configuration.getId()))
+                                && hardwareItemContainsConfiguration(x, configuration.getId()))
                         .collect(Collectors.toList());
                 configuration.setHardwareItems(confItems);
             }
@@ -726,6 +775,9 @@ public class OVFHelper {
                 String reservation = getChildNodeValue(configuration, "Reservation");
                 String resourceType = getChildNodeValue(configuration, "ResourceType");
                 String virtualQuantity = getChildNodeValue(configuration, "VirtualQuantity");
+                String hostResource = getChildNodeValue(configuration, "HostResource");
+                String addressOnParent = getChildNodeValue(configuration, "AddressOnParent");
+                String parent = getChildNodeValue(configuration, "Parent");
                 OVFVirtualHardwareItemTO item = new OVFVirtualHardwareItemTO();
                 item.setConfigurationIds(configurationIds);
                 item.setAllocationUnits(allocationUnits);
@@ -739,6 +791,9 @@ public class OVFHelper {
                     item.setResourceType(OVFVirtualHardwareItemTO.getResourceTypeFromId(resType));
                 }
                 item.setVirtualQuantity(getLongValueFromString(virtualQuantity));
+                item.setHostResource(hostResource);
+                item.setAddressOnParent(addressOnParent);
+                item.setParent(parent);
                 items.add(item);
             }
         }
@@ -822,7 +877,6 @@ public class OVFHelper {
         //<Disk ovf:capacity="50" ovf:capacityAllocationUnits="byte * 2^20" ovf:diskId="vmdisk2" ovf:fileRef="file2"
         //ovf:format="http://www.vmware.com/interfaces/specifications/vmdk.html#streamOptimized" ovf:populatedSize="43319296" />
         public Long _capacity;
-        public String _capacityUnit;
         public String _diskId;
         public String _fileRef;
         public Long _populatedSize;

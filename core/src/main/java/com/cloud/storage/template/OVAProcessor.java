@@ -107,7 +107,7 @@ public class OVAProcessor extends AdapterBase implements Processor {
         OVFHelper ovfHelper = new OVFHelper();
         Document doc = ovfHelper.getDocumentFromFile(ovfFilePath);
 
-        List<DatadiskTO> disks = ovfHelper.getOVFVolumeInfoFromFile(ovfFilePath, doc);
+        List<DatadiskTO> disks = ovfHelper.getOVFVolumeInfoFromFile(ovfFilePath, doc, null);
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace(String.format("Found %d disks in template %s", CollectionUtils.isNotEmpty(disks) ? disks.size() : 0, ovfFilePath));
         }

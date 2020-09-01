@@ -101,7 +101,7 @@ public class DefaultSnapshotStrategy extends SnapshotStrategyBase {
             if (parentSnapshotOnBackupStore != null && parentSnapshotOnBackupStore.getState() == State.Ready) {
                 DataStore store = dataStoreMgr.getDataStore(parentSnapshotOnBackupStore.getDataStoreId(), parentSnapshotOnBackupStore.getRole());
 
-                SnapshotInfo snapshotOnImageStore = (SnapshotInfo)store.create(snapshot);
+                SnapshotInfo snapshotOnImageStore = (SnapshotInfo)store.create(snapshot, null);
                 snapshotOnImageStore.processEvent(Event.CreateOnlyRequested);
 
                 SnapshotObjectTO snapTO = new SnapshotObjectTO();

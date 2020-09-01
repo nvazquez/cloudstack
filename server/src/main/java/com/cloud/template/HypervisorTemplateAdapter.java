@@ -280,7 +280,7 @@ public class HypervisorTemplateAdapter extends TemplateAdapterBase {
                     zoneSet.add(zoneId);
                 }
             }
-            TemplateInfo tmpl = imageFactory.getTemplate(template.getId(), imageStore);
+            TemplateInfo tmpl = imageFactory.getTemplate(template.getId(), imageStore, null);
             CreateTemplateContext<TemplateApiResult> context = new CreateTemplateContext<TemplateApiResult>(null, tmpl);
             AsyncCallbackDispatcher<HypervisorTemplateAdapter, TemplateApiResult> caller = AsyncCallbackDispatcher.create(this);
             caller.setCallback(caller.getTarget().createTemplateAsyncCallBack(null, null));
@@ -346,11 +346,11 @@ public class HypervisorTemplateAdapter extends TemplateAdapterBase {
 
                     }
 
-                    TemplateInfo tmpl = imageFactory.getTemplate(template.getId(), imageStore);
+                    TemplateInfo tmpl = imageFactory.getTemplate(template.getId(), imageStore, null);
                     //imageService.createTemplateAsync(tmpl, imageStore, caller);
 
                     // persist template_store_ref entry
-                    DataObject templateOnStore = imageStore.create(tmpl);
+                    DataObject templateOnStore = imageStore.create(tmpl, null);
                     // update template_store_ref and template state
 
                     EndPoint ep = _epSelector.select(templateOnStore);
@@ -504,7 +504,7 @@ public class HypervisorTemplateAdapter extends TemplateAdapterBase {
                     s_logger.info("Template: " + template.getId() + " has Datadisk template(s) associated with it. Delete Datadisk templates before deleting the template");
                     for (VMTemplateVO dataDiskTemplate : dataDiskTemplates) {
                         s_logger.info("Delete Datadisk template: " + dataDiskTemplate.getId() + " from image store: " + imageStore.getName());
-                        AsyncCallFuture<TemplateApiResult> future = imageService.deleteTemplateAsync(imageFactory.getTemplate(dataDiskTemplate.getId(), imageStore));
+                        AsyncCallFuture<TemplateApiResult> future = imageService.deleteTemplateAsync(imageFactory.getTemplate(dataDiskTemplate.getId(), imageStore, null));
                         try {
                             TemplateApiResult result = future.get();
                             dataDiskDeletetionResult = result.isSuccess();
@@ -537,7 +537,7 @@ public class HypervisorTemplateAdapter extends TemplateAdapterBase {
                 // remove from template_zone_ref
                 if (dataDiskDeletetionResult) {
                     s_logger.info("Delete template: " + template.getId() + " from image store: " + imageStore.getName());
-                    AsyncCallFuture<TemplateApiResult> future = imageService.deleteTemplateAsync(imageFactory.getTemplate(template.getId(), imageStore));
+                    AsyncCallFuture<TemplateApiResult> future = imageService.deleteTemplateAsync(imageFactory.getTemplate(template.getId(), imageStore, null));
                     try {
                         TemplateApiResult result = future.get();
                         success = result.isSuccess();

@@ -33,6 +33,8 @@ public interface Volume extends ControlledEntity, Identity, InternalIdentity, Ba
         UNKNOWN, ROOT, SWAP, DATADISK, ISO
     };
 
+    String DEPLOY_AS_IS_CONFIGURATION = "configuration_id";
+
     enum State {
         Allocated("The volume is allocated but has not been created yet."),
         Creating("The volume is being created.  getPoolId() should reflect the pool where it is being created."),

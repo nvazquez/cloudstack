@@ -190,7 +190,9 @@ public class TemplateObject implements TemplateInfo {
                 if (answer instanceof CopyCmdAnswer) {
                     CopyCmdAnswer cpyAnswer = (CopyCmdAnswer)answer;
                     TemplateObjectTO newTemplate = (TemplateObjectTO)cpyAnswer.getNewData();
-                    VMTemplateStoragePoolVO templatePoolRef = templatePoolDao.findByPoolTemplate(getDataStore().getId(), getId());
+
+                    String deployAsIsConfiguration = newTemplate.getDeployAsIsConfiguration();
+                    VMTemplateStoragePoolVO templatePoolRef = templatePoolDao.findByPoolTemplate(getDataStore().getId(), getId(), deployAsIsConfiguration);
                     templatePoolRef.setDownloadPercent(100);
 
                     setTemplateSizeIfNeeded(newTemplate, templatePoolRef);

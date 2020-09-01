@@ -287,7 +287,7 @@ public class TemplateManagerImplTest {
 
         when(dataStoreManager.getPrimaryDataStore(anyLong())).thenReturn(mockPrimaryDataStore);
         when(vmTemplateDao.findById(anyLong(), anyBoolean())).thenReturn(mockTemplate);
-        when(vmTemplatePoolDao.findByPoolTemplate(anyLong(), anyLong())).thenReturn(mockTemplateStore);
+        when(vmTemplatePoolDao.findByPoolTemplate(anyLong(), anyLong(), null)).thenReturn(mockTemplateStore);
 
         doNothing().when(mockTemplateStore).setMarkedForGC(anyBoolean());
 
@@ -309,7 +309,7 @@ public class TemplateManagerImplTest {
 
         when(dataStoreManager.getPrimaryDataStore(anyLong())).thenReturn(mockPrimaryDataStore);
         when(vmTemplateDao.findById(anyLong(), anyBoolean())).thenReturn(mockTemplate);
-        when(vmTemplatePoolDao.findByPoolTemplate(anyLong(), anyLong())).thenReturn(null);
+        when(vmTemplatePoolDao.findByPoolTemplate(anyLong(), anyLong(), null)).thenReturn(null);
         when(templateDataStoreDao.findByTemplateZoneDownloadStatus(202l, 1l, VMTemplateStorageResourceAssoc.Status.DOWNLOADED)).thenReturn(null);
 
         VMTemplateStoragePoolVO returnObject = templateManager.prepareTemplateForCreate(mockTemplate, (StoragePool) mockPrimaryDataStore);
@@ -332,7 +332,7 @@ public class TemplateManagerImplTest {
 
         when(dataStoreManager.getPrimaryDataStore(anyLong())).thenReturn(mockPrimaryDataStore);
         when(vmTemplateDao.findById(anyLong(), anyBoolean())).thenReturn(mockTemplate);
-        when(vmTemplatePoolDao.findByPoolTemplate(anyLong(), anyLong())).thenReturn(null);
+        when(vmTemplatePoolDao.findByPoolTemplate(anyLong(), anyLong(), null)).thenReturn(null);
         when(templateDataStoreDao.findByTemplateZoneDownloadStatus(202l, 1l, VMTemplateStorageResourceAssoc.Status.DOWNLOADED)).thenReturn(mockTemplateDataStore);
         when(storagePoolHostDao.listByHostStatus(2l, Status.Up)).thenReturn(null);
 
@@ -361,7 +361,7 @@ public class TemplateManagerImplTest {
         when(vmTemplateDao.findById(anyLong())).thenReturn(mockTemplate);
         when(dataStoreManager.getPrimaryDataStore(anyLong())).thenReturn(mockPrimaryDataStore);
         when(vmTemplateDao.findById(anyLong(), anyBoolean())).thenReturn(mockTemplate);
-        when(vmTemplatePoolDao.findByPoolTemplate(anyLong(), anyLong())).thenReturn(mockTemplateStore);
+        when(vmTemplatePoolDao.findByPoolTemplate(anyLong(), anyLong(), null)).thenReturn(mockTemplateStore);
         when(primaryDataStoreDao.findById(anyLong())).thenReturn(mockPool);
 
         doNothing().when(mockTemplateStore).setMarkedForGC(anyBoolean());
@@ -390,7 +390,7 @@ public class TemplateManagerImplTest {
         when(vmTemplateDao.findById(anyLong())).thenReturn(mockTemplate);
         when(dataStoreManager.getPrimaryDataStore(anyLong())).thenReturn(mockPrimaryDataStore);
         when(vmTemplateDao.findById(anyLong(), anyBoolean())).thenReturn(mockTemplate);
-        when(vmTemplatePoolDao.findByPoolTemplate(anyLong(), anyLong())).thenReturn(mockTemplateStore);
+        when(vmTemplatePoolDao.findByPoolTemplate(anyLong(), anyLong(), null)).thenReturn(mockTemplateStore);
         when(primaryDataStoreDao.findById(anyLong())).thenReturn(mockPool);
 
         doNothing().when(mockTemplateStore).setMarkedForGC(anyBoolean());
@@ -432,7 +432,7 @@ public class TemplateManagerImplTest {
         when(vmTemplateDao.findById(anyLong())).thenReturn(mockTemplate);
         when(dataStoreManager.getPrimaryDataStore(anyLong())).thenReturn(mockPrimaryDataStore);
         when(vmTemplateDao.findById(anyLong(), anyBoolean())).thenReturn(mockTemplate);
-        when(vmTemplatePoolDao.findByPoolTemplate(anyLong(), anyLong())).thenReturn(mockTemplateStore);
+        when(vmTemplatePoolDao.findByPoolTemplate(anyLong(), anyLong(), null)).thenReturn(mockTemplateStore);
         when(primaryDataStoreDao.findById(2l)).thenReturn(mockPool1);
         when(primaryDataStoreDao.findById(3l)).thenReturn(mockPool2);
         when(primaryDataStoreDao.findById(4l)).thenReturn(mockPool3);

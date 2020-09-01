@@ -391,3 +391,19 @@ CREATE VIEW `cloud`.`service_offering_view` AS
         `disk_offering`.`state`='Active'
     GROUP BY
         `service_offering`.`id`;
+
+ALTER TABLE `cloud`.`template_spool_ref`
+DROP FOREIGN KEY `fk_template_spool_ref__template_id`;
+
+ALTER TABLE `cloud`.`template_spool_ref`
+ADD COLUMN `deployment_option` VARCHAR(255) NULL DEFAULT NULL AFTER `updated`,
+ADD INDEX `fk_template_spool_ref__template_id_idx` (`template_id` ASC),
+ADD UNIQUE INDEX `index_template_spool_configuration` (`pool_id` ASC, `template_id` ASC, `deployment_option` ASC),
+DROP INDEX `i_template_spool_ref__template_id__pool_id` ;
+
+ALTER TABLE `cloud`.`template_spool_ref`
+ADD CONSTRAINT `fk_template_spool_ref__template_id`
+  FOREIGN KEY (`template_id`)
+  REFERENCES `cloud`.`vm_template` (`id`)
+  ON DELETE NO ACTION
+  ON UPDATE NO ACTION;

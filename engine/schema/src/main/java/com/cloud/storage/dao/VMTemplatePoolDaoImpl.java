@@ -28,6 +28,7 @@ import javax.inject.Inject;
 import org.apache.cloudstack.engine.subsystem.api.storage.DataObjectInStore;
 import org.apache.cloudstack.engine.subsystem.api.storage.DataStoreManager;
 import org.apache.cloudstack.engine.subsystem.api.storage.ObjectInDataStoreStateMachine;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
 
@@ -87,6 +88,7 @@ public class VMTemplatePoolDaoImpl extends GenericDaoBase<VMTemplateStoragePoolV
         PoolTemplateSearch = createSearchBuilder();
         PoolTemplateSearch.and("pool_id", PoolTemplateSearch.entity().getPoolId(), SearchCriteria.Op.EQ);
         PoolTemplateSearch.and("template_id", PoolTemplateSearch.entity().getTemplateId(), SearchCriteria.Op.EQ);
+        PoolTemplateSearch.and("configuration", PoolTemplateSearch.entity().getDeploymentOption(), SearchCriteria.Op.EQ);
         PoolTemplateSearch.done();
 
         TemplateStatusSearch = createSearchBuilder();
@@ -138,10 +140,13 @@ public class VMTemplatePoolDaoImpl extends GenericDaoBase<VMTemplateStoragePoolV
     }
 
     @Override
-    public VMTemplateStoragePoolVO findByPoolTemplate(long poolId, long templateId) {
+    public VMTemplateStoragePoolVO findByPoolTemplate(long poolId, long templateId, String configuration) {
         SearchCriteria<VMTemplateStoragePoolVO> sc = PoolTemplateSearch.create();
         sc.setParameters("pool_id", poolId);
         sc.setParameters("template_id", templateId);
+        if (StringUtils.isNotBlank(configuration)) {
+            sc.setParameters("configuration", configuration);
+        }
         return findOneIncludingRemovedBy(sc);
     }
 
@@ -245,7 +250,7 @@ public class VMTemplatePoolDaoImpl extends GenericDaoBase<VMTemplateStoragePoolV
 
     @Override
     public boolean templateAvailable(long templateId, long hostId) {
-        VMTemplateStorageResourceAssoc tmpltPool = findByPoolTemplate(hostId, templateId);
+        VMTemplateStorageResourceAssoc tmpltPool = findByPoolTemplate(hostId, templateId, null);
         if (tmpltPool == null)
             return false;
 

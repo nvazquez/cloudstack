@@ -4437,6 +4437,7 @@ public class UserVmManagerImpl extends ManagerBase implements UserVmManager, Vir
         }
 
         _templateMgr.prepareIsoForVmProfile(profile, dest);
+        _templateMgr.prepareDeployAsIsProfile(profile, dest);
         return true;
     }
 

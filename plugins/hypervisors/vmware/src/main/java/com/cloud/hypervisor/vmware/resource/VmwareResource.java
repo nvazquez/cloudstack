@@ -1782,15 +1782,21 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
             }
 
             DiskTO[] specDisks = vmSpec.getDisks();
-            boolean installAsIs = StringUtils.isNotEmpty(vmSpec.getTemplateLocation());
+            /*DeployAsIsInfoTO deployAsIsInfo = vmSpec.getDeployAsIsInfo();
+            boolean installAsIs = deployAsIsInfo != null && deployAsIsInfo.isDeployAsIs();
             if (installAsIs && dcMo.findVm(vmInternalCSName) == null) {
                 if (s_logger.isTraceEnabled()) {
-                    s_logger.trace(String.format("deploying OVA from %s as is", vmSpec.getTemplateLocation()));
+                    s_logger.trace("deploying OVA from as is");
                 }
                 String destDatastore = getDatastoreFromSpecDisks(specDisks);
-                vmInVcenter = _storageProcessor.cloneVMFromTemplate(vmSpec.getTemplateName(), vmInternalCSName, destDatastore);
+                String deploymentConfiguration = deployAsIsInfo.getDeploymentConfiguration();
+                DataStoreTO sourceStore = deployAsIsInfo.getSecondaryStore();
+                DataTO templateInSecondary = deployAsIsInfo.getTemplateInSecondary();
+                vmInVcenter = _storageProcessor.deployOVFTemplateFromSecondaryToPrimary(sourceStore, templateInSecondary,
+                        context, hyperHost, dcMo, destDatastore, vmInternalCSName, deploymentConfiguration);
+                //vmInVcenter = _storageProcessor.cloneVMFromTemplate(vmSpec.getTemplateName(), vmInternalCSName, destDatastore);
                 mapSpecDisksToClonedDisks(vmInVcenter, vmInternalCSName, specDisks);
-            }
+            }*/
 
             String guestOsId = translateGuestOsIdentifier(vmSpec.getArch(), vmSpec.getOs(), vmSpec.getPlatformEmulator()).value();
             DiskTO[] disks = validateDisks(vmSpec.getDisks());
@@ -1924,7 +1930,7 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
             }
 
             // The number of disks changed must be 0 for install as is, as the VM is a clone
-            int disksChanges = !installAsIs ? disks.length : 0;
+            //int disksChanges = !installAsIs ? disks.length : 0;
             int totalChangeDevices = disks.length + nics.length;
             int hackDeviceCount = 0;
             if (diskInfoBuilder != null) {
@@ -2320,15 +2326,11 @@ public class VmwareResource implements StoragePoolResource, ServerResource, Vmwa
             configureVideoCard(vmMo, vmSpec, vmConfigSpec);
 
             // Set OVF properties (if available)
-            Pair<String, List<OVFPropertyTO>> ovfPropsMap = vmSpec.getOvfProperties();
+            List<OVFPropertyTO> ovfProperties = vmSpec.getOvfProperties();
             VmConfigInfo templateVappConfig;
-            List<OVFPropertyTO> ovfProperties;
-            if (ovfPropsMap != null) {
-                String vmTemplate = ovfPropsMap.first();
-                s_logger.info("Find VM template " + vmTemplate);
-                VirtualMachineMO vmTemplateMO = dcMo.findVm(vmTemplate);
-                templateVappConfig = vmTemplateMO.getConfigInfo().getVAppConfig();
-                ovfProperties = ovfPropsMap.second();
+            if (ovfProperties != null) {
+                VirtualMachineMO templateVMmo = dcMo.findVm(vmSpec.getTemplateName());
+                templateVappConfig = templateVMmo.getConfigInfo().getVAppConfig();
                 // Set OVF properties (if available)
                 if (CollectionUtils.isNotEmpty(ovfProperties)) {
                     s_logger.info("Copying OVF properties from template and setting them to the values the user provided");

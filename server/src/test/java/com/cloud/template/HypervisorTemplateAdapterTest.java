@@ -257,7 +257,7 @@ public class HypervisorTemplateAdapterTest {
 
         when(_templateMgr.getImageStoreByTemplate(anyLong(), anyLong())).thenReturn(Collections.singletonList((DataStore)store));
         when(_templateStoreDao.listByTemplateStore(anyLong(), anyLong())).thenReturn(Collections.singletonList(dataStoreVO));
-        when(_dataFactory.getTemplate(anyLong(), any(DataStore.class))).thenReturn(info);
+        when(_dataFactory.getTemplate(anyLong(), any(DataStore.class), null)).thenReturn(info);
         when(_dataFactory.listTemplateOnCache(anyLong())).thenReturn(Collections.singletonList(info));
         when(_templateService.deleteTemplateAsync(any(TemplateInfo.class))).thenReturn(future);
         when(_accountDao.findById(anyLong())).thenReturn(acct);

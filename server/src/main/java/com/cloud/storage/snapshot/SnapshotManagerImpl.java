@@ -463,7 +463,7 @@ public class SnapshotManagerImpl extends MutualExclusiveIdsManagerBase implement
             }
         }
         SnapshotInfo snapshotInfo = this.snapshotFactory.getSnapshot(snapshotId, store);
-        snapshotInfo = (SnapshotInfo)store.create(snapshotInfo);
+        snapshotInfo = (SnapshotInfo)store.create(snapshotInfo, null);
         SnapshotDataStoreVO snapshotOnPrimaryStore = this._snapshotStoreDao.findBySnapshot(snapshot.getId(), store.getRole());
         snapshotOnPrimaryStore.setState(ObjectInDataStoreStateMachine.State.Ready);
         snapshotOnPrimaryStore.setInstallPath(vmSnapshot.getName());

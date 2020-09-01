@@ -85,4 +85,6 @@ public interface VolumeInfo extends DataObject, Volume {
     void setDirectDownload(boolean directDownload);
 
     boolean isDeployAsIs();
+
+    String getDeployAsIsConfiguration();
 }

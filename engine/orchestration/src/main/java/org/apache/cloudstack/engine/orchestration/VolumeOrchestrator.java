@@ -33,7 +33,9 @@ import javax.inject.Inject;
 import javax.naming.ConfigurationException;
 
 import com.cloud.agent.api.to.DatadiskTO;
+import com.cloud.storage.VolumeDetailVO;
 import com.cloud.storage.dao.VMTemplateDetailsDao;
+import com.cloud.utils.StringUtils;
 import org.apache.cloudstack.api.command.admin.vm.MigrateVMCmd;
 import org.apache.cloudstack.api.command.admin.volume.MigrateVolumeCmdByAdmin;
 import org.apache.cloudstack.api.command.user.volume.MigrateVolumeCmd;
@@ -55,6 +57,7 @@ import org.apache.cloudstack.engine.subsystem.api.storage.StoragePoolAllocator;
 import org.apache.cloudstack.engine.subsystem.api.storage.StorageStrategyFactory;
 import org.apache.cloudstack.engine.subsystem.api.storage.TemplateDataFactory;
 import org.apache.cloudstack.engine.subsystem.api.storage.TemplateInfo;
+import org.apache.cloudstack.engine.subsystem.api.storage.TemplateService;
 import org.apache.cloudstack.engine.subsystem.api.storage.VolumeDataFactory;
 import org.apache.cloudstack.engine.subsystem.api.storage.VolumeInfo;
 import org.apache.cloudstack.engine.subsystem.api.storage.VolumeService;
@@ -73,6 +76,7 @@ import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
 import org.apache.cloudstack.storage.datastore.db.TemplateDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.TemplateDataStoreVO;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.api.to.DataTO;
@@ -206,6 +210,8 @@ public class VolumeOrchestrator extends ManagerBase implements VolumeOrchestrati
     StorageStrategyFactory _storageStrategyFactory;
     @Inject
     VMTemplateDetailsDao templateDetailsDao;
+    @Inject
+    TemplateService templateService;
 
     private final StateMachine2<Volume.State, Volume.Event, Volume> _volStateMachine;
     protected List<StoragePoolAllocator> _storagePoolAllocators;
@@ -716,7 +722,7 @@ public class VolumeOrchestrator extends ManagerBase implements VolumeOrchestrati
     }
 
     private DiskProfile allocateTemplatedVolume(Type type, String name, DiskOffering offering, Long rootDisksize, Long minIops, Long maxIops, VirtualMachineTemplate template, VirtualMachine vm,
-                                                Account owner, long deviceId) {
+                                                Account owner, long deviceId, boolean deployAsIsCommonVolume, String configurationId) {
         assert (template.getFormat() != ImageFormat.ISO) : "ISO is not a template really....";
 
         Long size = _tmpltMgr.getTemplateSize(template.getId(), vm.getDataCenterId());
@@ -757,6 +763,11 @@ public class VolumeOrchestrator extends ManagerBase implements VolumeOrchestrati
 
         vol = _volsDao.persist(vol);
 
+        if (StringUtils.isNotBlank(configurationId)) {
+            VolumeDetailVO deployConfigurationDetail = new VolumeDetailVO(vol.getId(), Volume.DEPLOY_AS_IS_CONFIGURATION, configurationId, false);
+            _volDetailDao.persist(deployConfigurationDetail);
+        }
+
         // Create event and update resource count for volumes if vm is a user vm
         if (vm.getType() == VirtualMachine.Type.User) {
 
@@ -780,8 +791,13 @@ public class VolumeOrchestrator extends ManagerBase implements VolumeOrchestrati
                                                       Account owner) {
         int volumesNumber = 1;
         List<DatadiskTO> templateAsIsDisks = null;
+        String configurationId = null;
         if (template.isDeployAsIs()) {
-            templateAsIsDisks = _tmpltMgr.getTemplateDisksOnImageStore(template.getId(), DataStoreRole.Image);
+            Map<String, String> vmDetails = vm.getDetails();
+            if (MapUtils.isNotEmpty(vmDetails) && vmDetails.containsKey("configurationId")) {
+                configurationId = vmDetails.get("configurationId");
+            }
+            templateAsIsDisks = _tmpltMgr.getTemplateDisksOnImageStore(template.getId(), DataStoreRole.Image, configurationId);
             if (CollectionUtils.isNotEmpty(templateAsIsDisks)) {
                 templateAsIsDisks = templateAsIsDisks.stream()
                         .filter(x -> !x.isIso())
@@ -801,14 +817,18 @@ public class VolumeOrchestrator extends ManagerBase implements VolumeOrchestrati
             String volumeName = name;
             Long volumeSize = rootDisksize;
             long deviceId = type.equals(Type.ROOT) ? 0L : 1L;
+            boolean deployAsIsCommonVolume = false;
             if (template.isDeployAsIs()) {
                 int volumeNameSuffix = templateAsIsDisks.get(number).getDiskNumber();
                 volumeName = String.format("%s-%d", volumeName, volumeNameSuffix);
                 volumeSize = templateAsIsDisks.get(number).getVirtualSize();
                 deviceId = templateAsIsDisks.get(number).getDiskNumber();
+                deployAsIsCommonVolume = StringUtils.isNotBlank(templateAsIsDisks.get(number).getPath());
             }
             s_logger.info(String.format("adding disk object %s to %s", volumeName, vm.getInstanceName()));
-            profiles.add(allocateTemplatedVolume(type, volumeName, offering, volumeSize, minIops, maxIops, template, vm, owner, deviceId));
+            DiskProfile diskProfile = allocateTemplatedVolume(type, volumeName, offering, volumeSize, minIops, maxIops,
+                    template, vm, owner, deviceId, deployAsIsCommonVolume, configurationId);
+            profiles.add(diskProfile);
         }
         return profiles;
     }

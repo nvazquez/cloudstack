@@ -171,7 +171,7 @@ public class SnapshotServiceImpl implements SnapshotService {
 
         SnapshotObject snapshotOnPrimary = null;
         try {
-            snapshotOnPrimary = (SnapshotObject)snap.getDataStore().create(snapshot);
+            snapshotOnPrimary = (SnapshotObject)snap.getDataStore().create(snapshot, null);
         } catch (Exception e) {
             s_logger.debug("Failed to create snapshot state on data store due to " + e.getMessage());
             throw new CloudRuntimeException(e);
@@ -271,7 +271,7 @@ public class SnapshotServiceImpl implements SnapshotService {
                 throw new CloudRuntimeException("can not find an image stores");
             }
 
-            SnapshotInfo snapshotOnImageStore = (SnapshotInfo)imageStore.create(snapshot);
+            SnapshotInfo snapshotOnImageStore = (SnapshotInfo)imageStore.create(snapshot, null);
 
             snapshotOnImageStore.processEvent(Event.CreateOnlyRequested);
             CopySnapshotContext<CommandResult> context = new CopySnapshotContext<CommandResult>(null, snapshot, snapshotOnImageStore, future);

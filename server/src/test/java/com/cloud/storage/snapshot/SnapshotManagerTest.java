@@ -315,7 +315,7 @@ public class SnapshotManagerTest {
         when(_vmSnapshotDao.findById(nullable(Long.class))).thenReturn(vmSnapshotMock);
         when(snapshotStoreDao.findParent(any(DataStoreRole.class), nullable(Long.class), nullable(Long.class))).thenReturn(null);
         when(snapshotFactory.getSnapshot(nullable(Long.class), nullable(DataStore.class))).thenReturn(snapshotInfoMock);
-        when(storeMock.create(snapshotInfoMock)).thenReturn(snapshotInfoMock);
+        when(storeMock.create(snapshotInfoMock, null)).thenReturn(snapshotInfoMock);
         when(snapshotStoreDao.findBySnapshot(nullable(Long.class), nullable(DataStoreRole.class))).thenReturn(snapshotStoreMock);
         when(snapshotStoreDao.update(nullable(Long.class), nullable(SnapshotDataStoreVO.class))).thenReturn(true);
         when(_snapshotDao.update(nullable(Long.class), nullable(SnapshotVO.class))).thenReturn(true);

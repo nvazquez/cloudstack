@@ -619,7 +619,7 @@ public class VMwareGuru extends HypervisorGuruBase implements HypervisorGuru, Co
         VMTemplateStoragePoolVO templateRef = templateStoragePoolDao.findByPoolPath(poolId, templatePath);
         if (templateRef == null) {
             templateRef = new VMTemplateStoragePoolVO(poolId, templateId, null, 100, VMTemplateStorageResourceAssoc.Status.DOWNLOADED, templatePath, null, null, templatePath,
-                    templateSize);
+                    templateSize, null);
             templateRef.setState(ObjectInDataStoreStateMachine.State.Ready);
             templateStoragePoolDao.persist(templateRef);
         }

@@ -353,7 +353,7 @@ public class AncientDataMotionStrategy implements DataMotionStrategy {
                 return answer;
             }
 
-            DataObject objOnImageStore = imageStore.create(srcData);
+            DataObject objOnImageStore = imageStore.create(srcData, null);
             objOnImageStore.processEvent(Event.CreateOnlyRequested);
 
             Answer answer = copyObject(srcData, objOnImageStore);

@@ -33,7 +33,7 @@ public interface ObjectInDataStoreManager {
 
     boolean deleteIfNotReady(DataObject dataObj);
 
-    DataObject get(DataObject dataObj, DataStore store);
+    DataObject get(DataObject dataObj, DataStore store, String configuration);
 
     boolean update(DataObject vo, Event event) throws NoTransitionException, ConcurrentOperationException;
 

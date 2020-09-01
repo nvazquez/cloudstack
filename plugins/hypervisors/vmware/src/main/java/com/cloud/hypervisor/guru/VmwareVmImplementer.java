@@ -18,6 +18,8 @@ package com.cloud.hypervisor.guru;
 
 import com.cloud.agent.api.storage.OVFPropertyTO;
 import com.cloud.agent.api.to.DataStoreTO;
+import com.cloud.agent.api.to.DataTO;
+import com.cloud.agent.api.to.DeployAsIsInfoTO;
 import com.cloud.agent.api.to.DiskTO;
 import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
@@ -38,14 +40,12 @@ import com.cloud.storage.GuestOSHypervisorVO;
 import com.cloud.storage.GuestOSVO;
 import com.cloud.storage.ImageStore;
 import com.cloud.storage.VMTemplateStoragePoolVO;
-import com.cloud.storage.VMTemplateStorageResourceAssoc;
 import com.cloud.storage.Volume;
 import com.cloud.storage.dao.GuestOSDao;
 import com.cloud.storage.dao.GuestOSHypervisorDao;
 import com.cloud.storage.dao.VMTemplateDetailsDao;
 import com.cloud.storage.dao.VMTemplatePoolDao;
 import com.cloud.template.VirtualMachineTemplate;
-import com.cloud.utils.Pair;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.vm.DomainRouterVO;
 import com.cloud.vm.NicProfile;
@@ -120,9 +120,6 @@ class VmwareVmImplementer {
         to.setBootloader(VirtualMachineTemplate.BootloaderType.HVM);
         boolean deployAsIs = vm.getTemplate().isDeployAsIs();
         HostVO host = hostDao.findById(vm.getVirtualMachine().getHostId());
-        if (deployAsIs) {
-            storeTemplateLocationInTO(vm, to, host.getId());
-        }
         Map<String, String> details = to.getDetails();
         if (details == null)
             details = new HashMap<>();
@@ -189,14 +186,33 @@ class VmwareVmImplementer {
             to.setPlatformEmulator(guestOsMapping.getGuestOsName());
         }
 
-        if (vm.getTemplate().isDeployAsIs()) {
+        if (deployAsIs) {
             List<OVFPropertyTO> ovfProperties = getOvfPropertyList(vm, details);
             handleOvfProperties(vm, to, details, ovfProperties);
+            setDeployAsIsParams(vm, to, details);
+            storeTemplateLocationInTO(vm, to, host.getId());
         }
 
         setDetails(to, details);
 
         return to;
+    }
+
+    private void setDeployAsIsParams(VirtualMachineProfile vm, VirtualMachineTO to, Map<String, String> details) {
+        DeployAsIsInfoTO info = new DeployAsIsInfoTO();
+        Object template = vm.getParameter(VirtualMachineProfile.Param.DeployAsIsTemplate);
+        if (template != null) {
+            info.setTemplateInSecondary((DataTO) template);
+        }
+        Object store = vm.getParameter(VirtualMachineProfile.Param.DeployAsIsTemplateStore);
+        if (store != null) {
+            info.setSecondaryStore((DataStoreTO) store);
+        }
+        if (details.containsKey("configurationId")) {
+            info.setDeploymentConfiguration(details.get("configurationId"));
+        }
+        info.setDeployAsIs(true);
+        to.setDeployAsIsInfo(info);
     }
 
     private void storeTemplateLocationInTO(VirtualMachineProfile vm, VirtualMachineTO to, long hostId) {
@@ -351,27 +367,7 @@ class VmwareVmImplementer {
     private void handleOvfProperties(VirtualMachineProfile vm, VirtualMachineTO to, Map<String, String> details, List<OVFPropertyTO> ovfProperties) {
         if (CollectionUtils.isNotEmpty(ovfProperties)) {
             removeOvfPropertiesFromDetails(ovfProperties, details);
-            String templateInstallPath = null;
-            DiskTO rootDiskTO = getRootDiskTOFromVM(vm);
-
-            DataStoreTO dataStore = rootDiskTO.getData().getDataStore();
-            StoragePoolVO storagePoolVO = storagePoolDao.findByUuid(dataStore.getUuid());
-            long dataCenterId = storagePoolVO.getDataCenterId();
-            List<StoragePoolVO> pools = storagePoolDao.listByDataCenterId(dataCenterId);
-            for (StoragePoolVO pool : pools) {
-                VMTemplateStoragePoolVO ref = templateStoragePoolDao.findByPoolTemplate(pool.getId(), vm.getTemplateId());
-                if (ref != null && ref.getDownloadState() == VMTemplateStorageResourceAssoc.Status.DOWNLOADED) {
-                    templateInstallPath = ref.getInstallPath();
-                    break;
-                }
-            }
-
-            if (templateInstallPath == null) {
-                throw new CloudRuntimeException("Did not find the template install path for template " + vm.getTemplateId() + " on zone " + dataCenterId);
-            }
-
-            Pair<String, List<OVFPropertyTO>> pair = new Pair<String, List<OVFPropertyTO>>(templateInstallPath, ovfProperties);
-            to.setOvfProperties(pair);
+            to.setOvfProperties(ovfProperties);
         }
     }
 

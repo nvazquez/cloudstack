@@ -259,7 +259,7 @@ public class CloudStackPrimaryDataStoreDriverImpl implements PrimaryDataStoreDri
                 int primaryStorageDownloadWait = StorageManager.PRIMARY_STORAGE_DOWNLOAD_WAIT.value();
                 StoragePoolVO storagePoolVO = primaryStoreDao.findById(store.getId());
                 DataStore imageStore = templateManager.getImageStore(storagePoolVO.getDataCenterId(), srcdata.getId());
-                DataObject srcData = templateDataFactory.getTemplate(srcdata.getId(), imageStore);
+                DataObject srcData = templateDataFactory.getTemplate(srcdata.getId(), imageStore, null);
 
                 CopyCommand cmd = new CopyCommand(srcData.getTO(), destData.getTO(), primaryStorageDownloadWait, true);
                 EndPoint ep = epSelector.select(srcData, destData);
