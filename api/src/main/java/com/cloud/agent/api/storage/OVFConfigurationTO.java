@@ -29,7 +29,7 @@ public class OVFConfigurationTO {
     private int index;
 
     public OVFConfigurationTO(String id, String label, String description, int index) {
-        this.id = id.toLowerCase();
+        this.id = id;
         this.label = label;
         this.description = description;
         this.index = index;

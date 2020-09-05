@@ -14,35 +14,38 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package com.cloud.agent.api.storage;
+package com.cloud.agent.api.to;
 
-import com.cloud.agent.api.Command;
-import com.cloud.agent.api.to.DataTO;
+public class DeployAsIsInfoTO {
 
-public final class GetDatadisksCommand extends Command {
-    private DataTO data;
-    private String configurationId;
+    private boolean deployAsIs;
+    private String templatePath;
+    private String deploymentConfiguration;
 
-    public GetDatadisksCommand(DataTO data, String configurationId) {
-        super();
-        this.data = data;
-        this.configurationId = configurationId;
+    public DeployAsIsInfoTO() {
     }
 
-    protected GetDatadisksCommand() {
-        super();
+    public boolean isDeployAsIs() {
+        return deployAsIs;
     }
 
-    @Override
-    public boolean executeInSequence() {
-        return false;
+    public void setDeployAsIs(boolean deployAsIs) {
+        this.deployAsIs = deployAsIs;
     }
 
-    public DataTO getData() {
-        return data;
+    public String getTemplatePath() {
+        return templatePath;
     }
 
-    public String getConfigurationId() {
-        return configurationId;
+    public void setTemplatePath(String templateInSecondaryPath) {
+        this.templatePath = templateInSecondaryPath;
+    }
+
+    public String getDeploymentConfiguration() {
+        return deploymentConfiguration;
+    }
+
+    public void setDeploymentConfiguration(String deploymentConfiguration) {
+        this.deploymentConfiguration = deploymentConfiguration;
     }
 }

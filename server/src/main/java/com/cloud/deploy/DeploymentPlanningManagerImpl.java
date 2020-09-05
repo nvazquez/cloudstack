@@ -350,7 +350,7 @@ StateListener<State, VirtualMachine.Event, VirtualMachine> {
                             storageVolMap.remove(vol);
                         }
                         DeployDestination dest = new DeployDestination(dc, pod, cluster, host, storageVolMap);
-                        s_logger.debug("Returning Deployment Destination: " + dest);
+                        //s_logger.debug("Returning Deployment Destination: " + dest);
                         return dest;
                     }
                 }
@@ -488,7 +488,7 @@ StateListener<State, VirtualMachine.Event, VirtualMachine> {
                                     }
                                     DeployDestination dest = new DeployDestination(dc, pod, cluster, host,
                                             storageVolMap);
-                                    s_logger.debug("Returning Deployment Destination: " + dest);
+                                    //s_logger.debug("Returning Deployment Destination: " + dest);
                                     return dest;
                                 }
                             }
@@ -1104,7 +1104,7 @@ StateListener<State, VirtualMachine.Event, VirtualMachine> {
                                 storageVolMap.remove(vol);
                             }
                             DeployDestination dest = new DeployDestination(dc, pod, clusterVO, host, storageVolMap);
-                            s_logger.debug("Returning Deployment Destination: " + dest);
+                            //s_logger.debug("Returning Deployment Destination: " + dest);
                             return dest;
                         }
                     } else {

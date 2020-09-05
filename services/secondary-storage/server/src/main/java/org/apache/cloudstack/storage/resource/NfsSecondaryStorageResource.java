@@ -392,6 +392,7 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
 
     public Answer execute(GetDatadisksCommand cmd) {
         DataTO srcData = cmd.getData();
+        String configurationId = cmd.getConfigurationId();
         TemplateObjectTO template = (TemplateObjectTO)srcData;
         DataStoreTO srcStore = srcData.getDataStore();
         if (!(srcStore instanceof NfsTO)) {
@@ -446,7 +447,7 @@ public class NfsSecondaryStorageResource extends ServerResourceBase implements S
             s_logger.debug("Reading OVF " + ovfFilePath + " to retrive the number of disks present in OVA");
             OVFHelper ovfHelper = new OVFHelper();
 
-            List<DatadiskTO> disks = ovfHelper.getOVFVolumeInfoFromFile(ovfFilePath);
+            List<DatadiskTO> disks = ovfHelper.getOVFVolumeInfoFromFile(ovfFilePath, configurationId);
             return new GetDatadisksAnswer(disks);
         } catch (Exception e) {
             String msg = "Get Datadisk Template Count failed due to " + e.getMessage();

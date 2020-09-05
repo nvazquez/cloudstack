@@ -1771,11 +1771,10 @@ public class HypervisorHostHelper {
 
     /**
      * deploys a new VM from a ovf spec. It ignores network, defaults locale to 'US'
-     * @param stripNetworks   true if we are not deploying an AVO as is
      * @throws Exception shoud be a VmwareResourceException
      */
     public static void importVmFromOVF(VmwareHypervisorHost host, String ovfFilePath, String vmName, DatastoreMO dsMo, String diskOption, ManagedObjectReference morRp,
-                                       ManagedObjectReference morHost, boolean stripNetworks) throws CloudRuntimeException, IOException {
+                                       ManagedObjectReference morHost, String configurationId) throws CloudRuntimeException, IOException {
 
         assert (morRp != null);
 
@@ -1783,7 +1782,8 @@ public class HypervisorHostHelper {
         importSpecParams.setHostSystem(morHost);
         importSpecParams.setLocale("US");
         importSpecParams.setEntityName(vmName);
-        importSpecParams.setDeploymentOption("");
+        String deploymentOption = StringUtils.isNotBlank(configurationId) ? configurationId : "";
+        importSpecParams.setDeploymentOption(deploymentOption);
         importSpecParams.setDiskProvisioning(diskOption); // diskOption: thin, thick, etc
 
         String ovfDescriptor = removeOVFNetwork(HttpNfcLeaseMO.readOvfContent(ovfFilePath));
@@ -1877,6 +1877,7 @@ public class HypervisorHostHelper {
                         for (OvfFileItem ovfFileItem : ovfImportResult.getFileItem()) {
                             if (deviceKey.equals(ovfFileItem.getDeviceId())) {
                                 String absoluteFile = ovfFile.getParent() + File.separator + ovfFileItem.getPath();
+                                s_logger.info("Uploading file: " + absoluteFile);
                                 File f = new File(absoluteFile);
                                 if (f.exists()){
                                     String urlToPost = deviceUrl.getUrl();

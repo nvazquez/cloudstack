@@ -204,7 +204,7 @@ public class TemplateServiceImpl implements TemplateService {
             // clean up already persisted template_store_ref entry in case of createTemplateCallback is never called
             TemplateDataStoreVO templateStoreVO = _vmTemplateStoreDao.findByStoreTemplate(store.getId(), template.getId());
             if (templateStoreVO != null) {
-                TemplateInfo tmplObj = _templateFactory.getTemplate(template, store);
+                TemplateInfo tmplObj = _templateFactory.getTemplate(template, store, null);
                 tmplObj.processEvent(ObjectInDataStoreStateMachine.Event.OperationFailed);
             }
             TemplateApiResult result = new TemplateApiResult(template);
@@ -737,9 +737,9 @@ public class TemplateServiceImpl implements TemplateService {
     }
 
     @Override
-    public List<DatadiskTO> getTemplateDatadisksOnImageStore(TemplateInfo templateInfo) {
+    public List<DatadiskTO> getTemplateDatadisksOnImageStore(TemplateInfo templateInfo, String configurationId) {
         ImageStoreEntity tmpltStore = (ImageStoreEntity)templateInfo.getDataStore();
-        return tmpltStore.getDataDiskTemplates(templateInfo);
+        return tmpltStore.getDataDiskTemplates(templateInfo, configurationId);
     }
 
     @Override
@@ -748,7 +748,7 @@ public class TemplateServiceImpl implements TemplateService {
             // Get Datadisk template (if any) for OVA
             List<DatadiskTO> dataDiskTemplates = new ArrayList<DatadiskTO>();
             ImageStoreEntity tmpltStore = (ImageStoreEntity)parentTemplate.getDataStore();
-            dataDiskTemplates = tmpltStore.getDataDiskTemplates(parentTemplate);
+            dataDiskTemplates = tmpltStore.getDataDiskTemplates(parentTemplate, null);
             int diskCount = 0;
             VMTemplateVO templateVO = _templateDao.findById(parentTemplate.getId());
             _templateDao.loadDetails(templateVO);
@@ -962,7 +962,7 @@ public class TemplateServiceImpl implements TemplateService {
         AsyncCallFuture<TemplateApiResult> future = new AsyncCallFuture<TemplateApiResult>();
         // no need to create entry on template_store_ref here, since entries are already created when prepareSecondaryStorageForMigration is invoked.
         // But we need to set default install path so that sync can be done in the right s3 path
-        TemplateInfo templateOnStore = _templateFactory.getTemplate(template, store);
+        TemplateInfo templateOnStore = _templateFactory.getTemplate(template, store, null);
         String installPath =
                 TemplateConstants.DEFAULT_TMPLT_ROOT_DIR + "/" + TemplateConstants.DEFAULT_TMPLT_FIRST_LEVEL_DIR + template.getAccountId() + "/" + template.getId() + "/" +
                         template.getUniqueName();
@@ -1049,7 +1049,7 @@ public class TemplateServiceImpl implements TemplateService {
             throw new CloudRuntimeException("No secondary VM in running state in source template zone ");
         }
 
-        TemplateObject tmplForCopy = (TemplateObject)_templateFactory.getTemplate(srcTemplate, destStore);
+        TemplateObject tmplForCopy = (TemplateObject)_templateFactory.getTemplate(srcTemplate, destStore, null);
         if (s_logger.isDebugEnabled()) {
             s_logger.debug("Setting source template url to " + url);
         }
@@ -1078,7 +1078,7 @@ public class TemplateServiceImpl implements TemplateService {
             // clean up already persisted template_store_ref entry in case of createTemplateCallback is never called
             TemplateDataStoreVO templateStoreVO = _vmTemplateStoreDao.findByStoreTemplate(destStore.getId(), srcTemplate.getId());
             if (templateStoreVO != null) {
-                TemplateInfo tmplObj = _templateFactory.getTemplate(srcTemplate, destStore);
+                TemplateInfo tmplObj = _templateFactory.getTemplate(srcTemplate, destStore, null);
                 tmplObj.processEvent(ObjectInDataStoreStateMachine.Event.OperationFailed);
             }
             TemplateApiResult res = new TemplateApiResult((TemplateObject)templateOnStore);
@@ -1140,7 +1140,7 @@ public class TemplateServiceImpl implements TemplateService {
 
     @Override
     public AsyncCallFuture<TemplateApiResult> deleteTemplateOnPrimary(TemplateInfo template, StoragePool pool) {
-        TemplateObject templateObject = (TemplateObject)_templateFactory.getTemplate(template.getId(), (DataStore)pool);
+        TemplateObject templateObject = (TemplateObject)_templateFactory.getTemplateOnPrimaryStorage(template.getId(), (DataStore)pool, template.getDeployAsIsConfiguration());
 
         templateObject.processEvent(ObjectInDataStoreStateMachine.Event.DestroyRequested);
 
@@ -1251,7 +1251,7 @@ public class TemplateServiceImpl implements TemplateService {
             dataDiskTemplateOnStore = (TemplateObject)store.create(dataDiskTemplate);
             dataDiskTemplateOnStore.processEvent(ObjectInDataStoreStateMachine.Event.CreateOnlyRequested);
         } else {
-            dataDiskTemplateOnStore = (TemplateObject) imageFactory.getTemplate(parentTemplate, store);
+            dataDiskTemplateOnStore = (TemplateObject) imageFactory.getTemplate(parentTemplate, store, null);
         }
         try {
             CreateDataDiskTemplateContext<TemplateApiResult> context = new CreateDataDiskTemplateContext<TemplateApiResult>(null, dataDiskTemplateOnStore, future);

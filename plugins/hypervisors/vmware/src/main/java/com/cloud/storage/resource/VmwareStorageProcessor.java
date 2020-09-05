@@ -479,9 +479,9 @@ public class VmwareStorageProcessor implements StorageProcessor {
 
     private Pair<VirtualMachineMO, Long> copyTemplateFromSecondaryToPrimary(VmwareHypervisorHost hyperHost, DatastoreMO datastoreMo, String secondaryStorageUrl,
                                                                             String templatePathAtSecondaryStorage, String templateName, String templateUuid,
-                                                                            boolean createSnapshot, String nfsVersion, boolean deployAsIs) throws Exception {
+                                                                            boolean createSnapshot, String nfsVersion, String configuration) throws Exception {
         s_logger.info("Executing copyTemplateFromSecondaryToPrimary. secondaryStorage: " + secondaryStorageUrl + ", templatePathAtSecondaryStorage: " +
-                templatePathAtSecondaryStorage + ", templateName: " + templateName + ", deployAsIs: " + deployAsIs);
+                templatePathAtSecondaryStorage + ", templateName: " + templateName + ", configuration: " + configuration);
 
         String secondaryMountPoint = mountService.getMountPoint(secondaryStorageUrl, nfsVersion);
         s_logger.info("Secondary storage mount point: " + secondaryMountPoint);
@@ -514,10 +514,10 @@ public class VmwareStorageProcessor implements StorageProcessor {
 
         VirtualMachineMO vmMo;
         VmConfigInfo vAppConfig;
-        if (s_logger.isTraceEnabled()) {
-            s_logger.trace(String.format("deploying new style == %b", deployAsIs));
+        if (s_logger.isDebugEnabled()) {
+            s_logger.debug(String.format("Deploying OVF template %s with configuration %s", templateName, configuration));
         }
-        hyperHost.importVmFromOVF(srcFileName, templateUuid, datastoreMo, "thin", !deployAsIs);
+        hyperHost.importVmFromOVF(srcFileName, templateUuid, datastoreMo, "thin", configuration);
         vmMo = hyperHost.findVmOnHyperHost(templateUuid);
         if (vmMo == null) {
             String msg =
@@ -574,6 +574,7 @@ public class VmwareStorageProcessor implements StorageProcessor {
         DataTO destData = cmd.getDestTO();
         DataStoreTO destStore = destData.getDataStore();
         DataStoreTO primaryStore = destStore;
+        String configurationId = ((TemplateObjectTO) destData).getDeployAsIsConfiguration();
 
         String secondaryStorageUrl = nfsImageStore.getUrl();
 
@@ -631,7 +632,13 @@ public class VmwareStorageProcessor implements StorageProcessor {
 
         try {
             String storageUuid = managed ? managedStoragePoolName : primaryStore.getUuid();
-            String templateUuidName = deriveTemplateUuidOnHost(hyperHost, storageUuid, templateInfo.second());
+
+            // Generate a new template uuid if the template is marked as deploy-as-is,
+            // as it supports multiple configurations
+            String templateUuidName = template.isDeployAsIs() ?
+                    UUID.randomUUID().toString() :
+                    deriveTemplateUuidOnHost(hyperHost, storageUuid, templateInfo.second());
+
             DatacenterMO dcMo = new DatacenterMO(context, hyperHost.getHyperHostDatacenter());
             VirtualMachineMO templateMo = VmwareHelper.pickOneVmOnRunningHost(dcMo.findVmByNameAndLabel(templateUuidName), true);
             Pair<VirtualMachineMO, Long> vmInfo = null;
@@ -657,7 +664,7 @@ public class VmwareStorageProcessor implements StorageProcessor {
 
                 if (managed) {
                     vmInfo = copyTemplateFromSecondaryToPrimary(hyperHost, dsMo, secondaryStorageUrl, templateInfo.first(), templateInfo.second(),
-                            managedStoragePoolRootVolumeName, false, _nfsVersion, template.isDeployAsIs());
+                            managedStoragePoolRootVolumeName, false, _nfsVersion, configurationId);
 
                     VirtualMachineMO vmMo = vmInfo.first();
                     vmMo.unregisterVm();
@@ -675,7 +682,7 @@ public class VmwareStorageProcessor implements StorageProcessor {
                 }
                 else {
                     vmInfo = copyTemplateFromSecondaryToPrimary(hyperHost, dsMo, secondaryStorageUrl, templateInfo.first(), templateInfo.second(),
-                            templateUuidName, true, _nfsVersion, template.isDeployAsIs());
+                            templateUuidName, true, _nfsVersion, configurationId);
                 }
             } else {
                 s_logger.info("Template " + templateInfo.second() + " has already been setup, skip the template setup process in primary storage");
@@ -694,6 +701,7 @@ public class VmwareStorageProcessor implements StorageProcessor {
                 newTemplate.setPath(templateUuidName);
             }
 
+            newTemplate.setDeployAsIsConfiguration(configurationId);
             newTemplate.setSize((vmInfo != null)? vmInfo.second() : new Long(0));
 
             return new CopyCmdAnswer(newTemplate);
@@ -878,10 +886,11 @@ public class VmwareStorageProcessor implements StorageProcessor {
 
             VolumeObjectTO newVol = new VolumeObjectTO();
             newVol.setPath(vmdkFileBaseName);
-            if (template.getSize() != null){
+            if (template.isDeployAsIs()) {
+                newVol.setSize(volume.getSize());
+            } else if (template.getSize() != null) {
                 newVol.setSize(template.getSize());
-            }
-            else {
+            } else {
                 newVol.setSize(volume.getSize());
             }
             return new CopyCmdAnswer(newVol);
@@ -3447,7 +3456,7 @@ public class VmwareStorageProcessor implements StorageProcessor {
 
         VirtualMachineMO clonedVm = null;
         try {
-            hyperHost.importVmFromOVF(srcOVFFileName, newVolumeName, primaryDsMo, "thin", true);
+            hyperHost.importVmFromOVF(srcOVFFileName, newVolumeName, primaryDsMo, "thin", null);
             clonedVm = hyperHost.findVmOnHyperHost(newVolumeName);
             if (clonedVm == null) {
                 throw new Exception("Unable to create container VM for volume creation");

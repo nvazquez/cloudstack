@@ -17,7 +17,7 @@
 package com.cloud.hypervisor.guru;
 
 import com.cloud.agent.api.storage.OVFPropertyTO;
-import com.cloud.agent.api.to.DataStoreTO;
+import com.cloud.agent.api.to.DeployAsIsInfoTO;
 import com.cloud.agent.api.to.DiskTO;
 import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
@@ -33,19 +33,16 @@ import com.cloud.network.NetworkModel;
 import com.cloud.network.Networks;
 import com.cloud.network.dao.NetworkDao;
 import com.cloud.network.dao.NetworkVO;
-import com.cloud.storage.DataStoreRole;
 import com.cloud.storage.GuestOSHypervisorVO;
 import com.cloud.storage.GuestOSVO;
 import com.cloud.storage.ImageStore;
 import com.cloud.storage.VMTemplateStoragePoolVO;
-import com.cloud.storage.VMTemplateStorageResourceAssoc;
 import com.cloud.storage.Volume;
 import com.cloud.storage.dao.GuestOSDao;
 import com.cloud.storage.dao.GuestOSHypervisorDao;
 import com.cloud.storage.dao.VMTemplateDetailsDao;
 import com.cloud.storage.dao.VMTemplatePoolDao;
 import com.cloud.template.VirtualMachineTemplate;
-import com.cloud.utils.Pair;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.vm.DomainRouterVO;
 import com.cloud.vm.NicProfile;
@@ -57,7 +54,6 @@ import com.cloud.vm.dao.NicDao;
 import org.apache.cloudstack.api.ApiConstants;
 import org.apache.cloudstack.storage.datastore.db.PrimaryDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
-import org.apache.cloudstack.storage.to.TemplateObjectTO;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.log4j.Logger;
@@ -120,9 +116,6 @@ class VmwareVmImplementer {
         to.setBootloader(VirtualMachineTemplate.BootloaderType.HVM);
         boolean deployAsIs = vm.getTemplate().isDeployAsIs();
         HostVO host = hostDao.findById(vm.getVirtualMachine().getHostId());
-        if (deployAsIs) {
-            storeTemplateLocationInTO(vm, to, host.getId());
-        }
         Map<String, String> details = to.getDetails();
         if (details == null)
             details = new HashMap<>();
@@ -189,9 +182,10 @@ class VmwareVmImplementer {
             to.setPlatformEmulator(guestOsMapping.getGuestOsName());
         }
 
-        if (vm.getTemplate().isDeployAsIs()) {
+        if (deployAsIs) {
             List<OVFPropertyTO> ovfProperties = getOvfPropertyList(vm, details);
             handleOvfProperties(vm, to, details, ovfProperties);
+            setDeployAsIsParams(vm, to, details);
         }
 
         setDetails(to, details);
@@ -199,49 +193,25 @@ class VmwareVmImplementer {
         return to;
     }
 
-    private void storeTemplateLocationInTO(VirtualMachineProfile vm, VirtualMachineTO to, long hostId) {
-        VMTemplateStoragePoolVO templateStoragePoolVO = templateStoragePoolDao.findByHostTemplate(hostId, vm.getTemplate().getId());
-        if (templateStoragePoolVO != null) {
-            long storePoolId = templateStoragePoolVO.getDataStoreId();
+    private void setDeployAsIsParams(VirtualMachineProfile vm, VirtualMachineTO to, Map<String, String> details) {
+        DeployAsIsInfoTO info = new DeployAsIsInfoTO();
 
-            StoragePoolVO storagePoolVO = storagePoolDao.findById(storePoolId);
-            String relativeLocation = storagePoolVO.getUuid();
-
-            String templateName = templateStoragePoolVO.getInstallPath();
-            createDiskTOForTemplateOVA(vm, storagePoolVO);
-
-            to.setTemplateName(templateName);
-            to.setTemplateLocation(relativeLocation);
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace(String.format("deploying '%s' OVA as is from %s.", templateName, relativeLocation));
-            }
+        String configuration = null;
+        if (details.containsKey(VmDetailConstants.DEPLOY_AS_IS_CONFIGURATION)) {
+            configuration = details.get(VmDetailConstants.DEPLOY_AS_IS_CONFIGURATION);
+            info.setDeploymentConfiguration(configuration);
         }
-    }
 
-    private void createDiskTOForTemplateOVA(VirtualMachineProfile vm, StoragePoolVO storagePoolVO) {
-        DiskTO disk = new DiskTO();
-        TemplateObjectTO data = new TemplateObjectTO(vm.getTemplate());
-        DataStoreTO store = new DataStoreTO() {
-            @Override public DataStoreRole getRole() {
-                return DataStoreRole.ImageCache;
-            }
+        // Deploy as-is disks are all allocated to the same storage pool
+        String deployAsIsStoreUuid = vm.getDisks().get(0).getData().getDataStore().getUuid();
+        StoragePoolVO storagePoolVO = storagePoolDao.findByUuid(deployAsIsStoreUuid);
+        VMTemplateStoragePoolVO tmplRef = templateStoragePoolDao.findByPoolTemplate(storagePoolVO.getId(), vm.getTemplate().getId(), configuration);
+        if (tmplRef != null) {
+            info.setTemplatePath(tmplRef.getInstallPath());
+        }
 
-            @Override public String getUuid() {
-                return storagePoolVO.getUuid();
-            }
-
-            @Override public String getUrl() {
-                return null;
-            }
-
-            @Override public String getPathSeparator() {
-                return "/";
-            }
-        };
-        data.setDataStore(store);
-        disk.setData(data);
-
-        vm.addDisk(disk);
+        info.setDeployAsIs(true);
+        to.setDeployAsIsInfo(info);
     }
 
     private void setDetails(VirtualMachineTO to, Map<String, String> details) {
@@ -351,27 +321,7 @@ class VmwareVmImplementer {
     private void handleOvfProperties(VirtualMachineProfile vm, VirtualMachineTO to, Map<String, String> details, List<OVFPropertyTO> ovfProperties) {
         if (CollectionUtils.isNotEmpty(ovfProperties)) {
             removeOvfPropertiesFromDetails(ovfProperties, details);
-            String templateInstallPath = null;
-            DiskTO rootDiskTO = getRootDiskTOFromVM(vm);
-
-            DataStoreTO dataStore = rootDiskTO.getData().getDataStore();
-            StoragePoolVO storagePoolVO = storagePoolDao.findByUuid(dataStore.getUuid());
-            long dataCenterId = storagePoolVO.getDataCenterId();
-            List<StoragePoolVO> pools = storagePoolDao.listByDataCenterId(dataCenterId);
-            for (StoragePoolVO pool : pools) {
-                VMTemplateStoragePoolVO ref = templateStoragePoolDao.findByPoolTemplate(pool.getId(), vm.getTemplateId());
-                if (ref != null && ref.getDownloadState() == VMTemplateStorageResourceAssoc.Status.DOWNLOADED) {
-                    templateInstallPath = ref.getInstallPath();
-                    break;
-                }
-            }
-
-            if (templateInstallPath == null) {
-                throw new CloudRuntimeException("Did not find the template install path for template " + vm.getTemplateId() + " on zone " + dataCenterId);
-            }
-
-            Pair<String, List<OVFPropertyTO>> pair = new Pair<String, List<OVFPropertyTO>>(templateInstallPath, ovfProperties);
-            to.setOvfProperties(pair);
+            to.setOvfProperties(ovfProperties);
         }
     }
 

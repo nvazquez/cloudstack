@@ -658,7 +658,7 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
         VMTemplateStoragePoolVO templateStoragePoolRef = null;
         TemplateDataStoreVO templateStoreRef = null;
 
-        templateStoragePoolRef = _tmpltPoolDao.findByPoolTemplate(poolId, templateId);
+        templateStoragePoolRef = _tmpltPoolDao.findByPoolTemplate(poolId, templateId, null);
         if (templateStoragePoolRef != null) {
             templateStoragePoolRef.setMarkedForGC(false);
             _tmpltPoolDao.update(templateStoragePoolRef.getId(), templateStoragePoolRef);
@@ -698,7 +698,7 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
                     return null;
                 }
 
-                return _tmpltPoolDao.findByPoolTemplate(poolId, templateId);
+                return _tmpltPoolDao.findByPoolTemplate(poolId, templateId, null);
             } catch (Exception ex) {
                 s_logger.debug("failed to copy template from image store:" + srcSecStore.getName() + " to primary storage");
             }
@@ -1010,7 +1010,7 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
         }
 
         PrimaryDataStore pool = (PrimaryDataStore)_dataStoreMgr.getPrimaryDataStore(templatePoolVO.getPoolId());
-        TemplateInfo template = _tmplFactory.getTemplate(templatePoolRef.getTemplateId(), pool);
+        TemplateInfo template = _tmplFactory.getTemplateOnPrimaryStorage(templatePoolRef.getTemplateId(), pool, templatePoolRef.getDeploymentOption());
 
         try {
             if (s_logger.isDebugEnabled()) {
@@ -2214,13 +2214,14 @@ public class TemplateManagerImpl extends ManagerBase implements TemplateManager,
     }
 
     @Override
-    public List<DatadiskTO> getTemplateDisksOnImageStore(Long templateId, DataStoreRole role) {
+    public List<DatadiskTO> getTemplateDisksOnImageStore(Long templateId, DataStoreRole role, String configurationId) {
         TemplateInfo templateObject = _tmplFactory.getTemplate(templateId, role);
         if (templateObject == null) {
             String msg = String.format("Could not find template %s downloaded on store with role %s", templateId, role.toString());
             s_logger.error(msg);
             throw new CloudRuntimeException(msg);
         }
-        return _tmpltSvr.getTemplateDatadisksOnImageStore(templateObject);
+        return _tmpltSvr.getTemplateDatadisksOnImageStore(templateObject, configurationId);
     }
+
 }

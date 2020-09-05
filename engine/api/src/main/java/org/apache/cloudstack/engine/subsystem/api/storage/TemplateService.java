@@ -76,5 +76,5 @@ public interface TemplateService {
 
     AsyncCallFuture<TemplateApiResult> createDatadiskTemplateAsync(TemplateInfo parentTemplate, TemplateInfo dataDiskTemplate, String path, String diskId, long fileSize, boolean bootable);
 
-    List<DatadiskTO> getTemplateDatadisksOnImageStore(TemplateInfo templateInfo);
+    List<DatadiskTO> getTemplateDatadisksOnImageStore(TemplateInfo templateInfo, String configurationId);
 }

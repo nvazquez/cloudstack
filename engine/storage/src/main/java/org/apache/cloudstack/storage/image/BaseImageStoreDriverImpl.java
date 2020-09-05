@@ -497,13 +497,13 @@ public abstract class BaseImageStoreDriverImpl implements ImageStoreDriver {
     }
 
     @Override
-    public List<DatadiskTO> getDataDiskTemplates(DataObject obj) {
+    public List<DatadiskTO> getDataDiskTemplates(DataObject obj, String configurationId) {
         List<DatadiskTO> dataDiskDetails = new ArrayList<DatadiskTO>();
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Get the data disks present in the OVA template");
         }
         DataStore store = obj.getDataStore();
-        GetDatadisksCommand cmd = new GetDatadisksCommand(obj.getTO());
+        GetDatadisksCommand cmd = new GetDatadisksCommand(obj.getTO(), configurationId);
         EndPoint ep = _defaultEpSelector.select(store);
         Answer answer = null;
         if (ep == null) {
