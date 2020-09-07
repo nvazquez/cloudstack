@@ -20,6 +20,8 @@ import com.cloud.hypervisor.vmware.mo.DatacenterMO;
 import com.cloud.hypervisor.vmware.mo.DatastoreFile;
 import com.cloud.utils.ActionDelegate;
 import com.cloud.utils.StringUtils;
+import com.vmware.pbm.PbmPortType;
+import com.vmware.pbm.PbmServiceInstanceContent;
 import com.vmware.vim25.ManagedObjectReference;
 import com.vmware.vim25.ObjectContent;
 import com.vmware.vim25.ObjectSpec;
@@ -146,6 +148,14 @@ public class VmwareContext {
 
     public ServiceContent getServiceContent() {
         return _vimClient.getServiceContent();
+    }
+
+    public PbmPortType getPbmService() {
+        return _vimClient.getPbmService();
+    }
+
+    public PbmServiceInstanceContent getPbmServiceContent() {
+        return _vimClient.getPbmServiceContent();
     }
 
     public ManagedObjectReference getPropertyCollector() {
@@ -309,6 +319,24 @@ public class VmwareContext {
         }
 
         return dcMo.findDatastore(tokens[1]);
+    }
+
+    // path in format of <datacenter name>/<datastore name>
+    public String getDatastoreNameFromPath(String inventoryPath) throws Exception {
+        assert (inventoryPath != null);
+
+        String[] tokens;
+        if (inventoryPath.startsWith("/"))
+            tokens = inventoryPath.substring(1).split("/");
+        else
+            tokens = inventoryPath.split("/");
+
+        if (tokens == null || tokens.length != 2) {
+            s_logger.error("Invalid datastore inventory path. path: " + inventoryPath);
+            return null;
+        }
+
+        return tokens[1];
     }
 
     public void waitForTaskProgressDone(ManagedObjectReference morTask) throws Exception {

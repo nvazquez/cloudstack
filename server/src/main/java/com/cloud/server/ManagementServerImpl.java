@@ -27,16 +27,20 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import javax.inject.Inject;
 import javax.naming.ConfigurationException;
 
+import com.cloud.storage.Storage;
 import org.apache.cloudstack.acl.ControlledEntity;
 import org.apache.cloudstack.affinity.AffinityGroupProcessor;
 import org.apache.cloudstack.affinity.dao.AffinityGroupVMMapDao;
@@ -832,6 +836,8 @@ public class ManagementServerImpl extends ManagerBase implements ManagementServe
     private KeystoreManager _ksMgr;
     @Inject
     private DpdkHelper dpdkHelper;
+    @Inject
+    private PrimaryDataStoreDao _primaryDataStoreDao;
 
     private LockMasterListener _lockMasterListener;
     private final ScheduledExecutorService _eventExecutor = Executors.newScheduledThreadPool(1, new NamedThreadFactory("EventChecker"));
@@ -1479,8 +1485,29 @@ public class ManagementServerImpl extends ManagerBase implements ManagementServe
         } else {
             suitablePools = allPools;
         }
-
+        List<StoragePool> avoidPools = new ArrayList<>();
+        if (srcVolumePool.getParent() != 0L) {
+            StoragePool datastoreCluster = _poolDao.findById(srcVolumePool.getParent());
+            avoidPools.add(datastoreCluster);
+        }
+        abstractDataStoreClustersList((List<StoragePool>) allPools, new ArrayList<StoragePool>());
+        abstractDataStoreClustersList((List<StoragePool>) suitablePools, avoidPools);
         return new Pair<List<? extends StoragePool>, List<? extends StoragePool>>(allPools, suitablePools);
+    }
+
+    private void abstractDataStoreClustersList(List<StoragePool> storagePools, List<StoragePool> avoidPools) {
+        Predicate<StoragePool> childDatastorePredicate = pool -> (pool.getParent() != 0);
+        List<StoragePool> childDatastores = storagePools.stream().filter(childDatastorePredicate).collect(Collectors.toList());
+        storagePools.removeAll(avoidPools);
+        if (!childDatastores.isEmpty()) {
+            storagePools.removeAll(childDatastores);
+            Set<Long> parentStoragePoolIds = childDatastores.stream().map(mo -> mo.getParent()).collect(Collectors.toSet());
+            for (Long parentStoragePoolId : parentStoragePoolIds) {
+                StoragePool parentPool = _poolDao.findById(parentStoragePoolId);
+                if (!storagePools.contains(parentPool) && !avoidPools.contains(parentPool))
+                    storagePools.add(parentPool);
+            }
+        }
     }
 
     /**
@@ -3298,9 +3325,16 @@ public class ManagementServerImpl extends ManagerBase implements ManagementServe
         sb.and("nulltype", sb.entity().getType(), SearchCriteria.Op.IN);
 
         if (storageId != null) {
-            final SearchBuilder<VolumeVO> volumeSearch = _volumeDao.createSearchBuilder();
-            volumeSearch.and("poolId", volumeSearch.entity().getPoolId(), SearchCriteria.Op.EQ);
-            sb.join("volumeSearch", volumeSearch, sb.entity().getId(), volumeSearch.entity().getInstanceId(), JoinBuilder.JoinType.INNER);
+            StoragePoolVO storagePool = _primaryDataStoreDao.findById(storageId);
+            if (storagePool.getPoolType() == Storage.StoragePoolType.DatastoreCluster) {
+                final SearchBuilder<VolumeVO> volumeSearch = _volumeDao.createSearchBuilder();
+                volumeSearch.and("poolId", volumeSearch.entity().getPoolId(), SearchCriteria.Op.IN);
+                sb.join("volumeSearch", volumeSearch, sb.entity().getId(), volumeSearch.entity().getInstanceId(), JoinBuilder.JoinType.INNER);
+            } else {
+                final SearchBuilder<VolumeVO> volumeSearch = _volumeDao.createSearchBuilder();
+                volumeSearch.and("poolId", volumeSearch.entity().getPoolId(), SearchCriteria.Op.EQ);
+                sb.join("volumeSearch", volumeSearch, sb.entity().getId(), volumeSearch.entity().getInstanceId(), JoinBuilder.JoinType.INNER);
+            }
         }
 
         final SearchCriteria<VMInstanceVO> sc = sb.create();
@@ -3340,7 +3374,14 @@ public class ManagementServerImpl extends ManagerBase implements ManagementServe
         }
 
         if (storageId != null) {
-            sc.setJoinParameters("volumeSearch", "poolId", storageId);
+            StoragePoolVO storagePool = _primaryDataStoreDao.findById(storageId);
+            if (storagePool.getPoolType() == Storage.StoragePoolType.DatastoreCluster) {
+                List<StoragePoolVO> childDataStores = _primaryDataStoreDao.listChildStoragePoolsInDatastoreCluster(storageId);
+                List<Long> childDatastoreIds = childDataStores.stream().map(mo -> mo.getId()).collect(Collectors.toList());
+                sc.setJoinParameters("volumeSearch", "poolId", childDatastoreIds.toArray());
+            } else {
+                sc.setJoinParameters("volumeSearch", "poolId", storageId);
+            }
         }
 
         final Pair<List<VMInstanceVO>, Integer> result = _vmInstanceDao.searchAndCount(sc, searchFilter);

@@ -294,4 +294,5 @@
   <bean id="directDownloadCertificateDaoImpl" class="org.apache.cloudstack.direct.download.DirectDownloadCertificateDaoImpl" />
   <bean id="directDownloadCertificateHostMapDaoImpl" class="org.apache.cloudstack.direct.download.DirectDownloadCertificateHostMapDaoImpl" />
   <bean id="routerHealthCheckResultsDaoImpl" class="com.cloud.network.dao.RouterHealthCheckResultDaoImpl" />
+  <bean id="VsphereStoragePolicyDaoImpl" class="com.cloud.dc.dao.VsphereStoragePolicyDaoImpl" />
 </beans>

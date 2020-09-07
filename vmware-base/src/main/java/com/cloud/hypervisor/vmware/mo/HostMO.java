@@ -16,15 +16,9 @@
 // under the License.
 package com.cloud.hypervisor.vmware.mo;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Pattern;
-
-import org.apache.log4j.Logger;
-
+import com.cloud.hypervisor.vmware.util.VmwareContext;
+import com.cloud.hypervisor.vmware.util.VmwareHelper;
+import com.cloud.utils.Pair;
 import com.google.gson.Gson;
 import com.vmware.vim25.AboutInfo;
 import com.vmware.vim25.AlreadyExistsFaultMsg;
@@ -63,9 +57,14 @@ import com.vmware.vim25.PropertySpec;
 import com.vmware.vim25.TraversalSpec;
 import com.vmware.vim25.VirtualMachineConfigSpec;
 import com.vmware.vim25.VirtualNicManagerNetConfig;
-import com.cloud.hypervisor.vmware.util.VmwareContext;
-import com.cloud.hypervisor.vmware.util.VmwareHelper;
-import com.cloud.utils.Pair;
+import org.apache.log4j.Logger;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 public class HostMO extends BaseMO implements VmwareHypervisorHost {
     private static final Logger s_logger = Logger.getLogger(HostMO.class);
@@ -833,12 +832,13 @@ public class HostMO extends BaseMO implements VmwareHypervisorHost {
     }
 
     @Override
-    public ManagedObjectReference mountDatastore(boolean vmfsDatastore, String poolHostAddress, int poolHostPort, String poolPath, String poolUuid) throws Exception {
+    public ManagedObjectReference mountDatastore(boolean vmfsDatastore, String poolHostAddress, int poolHostPort, String poolPath, String poolUuid, boolean createBaseFolder) throws Exception {
 
         if (s_logger.isTraceEnabled())
             s_logger.trace("vCenter API trace - mountDatastore(). target MOR: " + _mor.getValue() + ", vmfs: " + vmfsDatastore + ", poolHost: " + poolHostAddress +
                     ", poolHostPort: " + poolHostPort + ", poolPath: " + poolPath + ", poolUuid: " + poolUuid);
 
+        DatastoreMO dsMo = null;
         HostDatastoreSystemMO hostDatastoreSystemMo = getHostDatastoreSystemMO();
         ManagedObjectReference morDatastore = hostDatastoreSystemMo.findDatastore(poolUuid);
         if (morDatastore == null) {
@@ -865,20 +865,28 @@ public class HostMO extends BaseMO implements VmwareHypervisorHost {
                         s_logger.trace("vCenter API trace - mountDatastore() done(failed)");
                     throw new Exception(msg);
                 }
+                dsMo = new DatastoreMO(_context, morDatastore);
             } else {
                 morDatastore = _context.getDatastoreMorByPath(poolPath);
                 if (morDatastore == null) {
-                    String msg = "Unable to create VMFS datastore. host: " + poolHostAddress + ", port: " + poolHostPort + ", path: " + poolPath + ", uuid: " + poolUuid;
-                    s_logger.error(msg);
+                    morDatastore = findDatastore(_context.getDatastoreNameFromPath(poolPath));
+                    if (morDatastore == null) {
+                        String msg = "Unable to create VMFS datastore. host: " + poolHostAddress + ", port: " + poolHostPort + ", path: " + poolPath + ", uuid: " + poolUuid;
+                        s_logger.error(msg);
 
-                    if (s_logger.isTraceEnabled())
-                        s_logger.trace("vCenter API trace - mountDatastore() done(failed)");
-                    throw new Exception(msg);
+                        if (s_logger.isTraceEnabled())
+                            s_logger.trace("vCenter API trace - mountDatastore() done(failed)");
+                        throw new Exception(msg);
+                    }
                 }
 
-                DatastoreMO dsMo = new DatastoreMO(_context, morDatastore);
+                dsMo = new DatastoreMO(_context, morDatastore);
                 dsMo.setCustomFieldValue(CustomFieldConstants.CLOUD_UUID, poolUuid);
             }
+        }
+
+        if (dsMo != null && !"StoragePod".equals(morDatastore.getType()) && createBaseFolder) {
+            HypervisorHostHelper.createBaseFolderInDatastore(dsMo, this);
         }
 
         if (s_logger.isTraceEnabled())

@@ -65,6 +65,7 @@ import com.cloud.hypervisor.vmware.util.VmwareContext;
 import com.cloud.hypervisor.vmware.util.VmwareHelper;
 import com.cloud.network.Networks.BroadcastDomainType;
 import com.cloud.offering.NetworkOffering;
+import com.cloud.storage.Storage.StoragePoolType;
 import com.cloud.utils.ActionDelegate;
 import com.cloud.utils.NumbersUtil;
 import com.cloud.utils.Pair;
@@ -149,6 +150,8 @@ public class HypervisorHostHelper {
     private static final String UNTAGGED_VLAN_NAME = "untagged";
     private static final String VMDK_PACK_DIR = "ova";
     private static final String OVA_OPTION_KEY_BOOTDISK = "cloud.ova.bootdisk";
+    public static final String VSPHERE_DATASTORE_BASE_FOLDER = "fcd";
+    public static final String VSPHERE_DATASTORE_HIDDEN_FOLDER = ".hidden";
 
     public static VirtualMachineMO findVmFromObjectContent(VmwareContext context, ObjectContent[] ocs, String name, String instanceNameCustomField) {
 
@@ -2169,4 +2172,29 @@ public class HypervisorHostHelper {
         return DiskControllerType.getType(controller) == DiskControllerType.ide;
     }
 
+    public static void createBaseFolder(DatastoreMO dsMo, VmwareHypervisorHost hyperHost, StoragePoolType poolType) throws Exception {
+        if (poolType != null && poolType == StoragePoolType.DatastoreCluster) {
+            StoragepodMO storagepodMO = new StoragepodMO(hyperHost.getContext(), dsMo.getMor());
+            List<ManagedObjectReference> datastoresInCluster = storagepodMO.getDatastoresInDatastoreCluster();
+            for (ManagedObjectReference datastore : datastoresInCluster) {
+                DatastoreMO childDsMo = new DatastoreMO(hyperHost.getContext(), datastore);
+                createBaseFolderInDatastore(childDsMo, hyperHost);
+            }
+        } else {
+            createBaseFolderInDatastore(dsMo, hyperHost);
+        }
+    }
+
+    public static void createBaseFolderInDatastore(DatastoreMO dsMo, VmwareHypervisorHost hyperHost) throws Exception {
+        String dsPath = String.format("[%s]", dsMo.getName());
+        String folderPath = String.format("[%s] %s", dsMo.getName(), VSPHERE_DATASTORE_BASE_FOLDER);
+        String hiddenFolderPath = String.format("%s/%s", folderPath, VSPHERE_DATASTORE_HIDDEN_FOLDER);
+
+        if (!dsMo.folderExists(dsPath, VSPHERE_DATASTORE_BASE_FOLDER)) {
+            s_logger.info(String.format("vSphere datastore base folder: %s does not exist, now creating on datastore: %s", VSPHERE_DATASTORE_BASE_FOLDER, dsMo.getName()));
+            dsMo.makeDirectory(folderPath, hyperHost.getHyperHostDatacenter());
+            // Adding another directory so vCentre doesn't remove the fcd directory when it's empty
+            dsMo.makeDirectory(hiddenFolderPath, hyperHost.getHyperHostDatacenter());
+        }
+    }
 }
