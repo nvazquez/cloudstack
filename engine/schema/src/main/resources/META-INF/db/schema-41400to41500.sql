@@ -198,9 +198,6 @@ INSERT IGNORE INTO `cloud`.`guest_os_hypervisor` (uuid,hypervisor_type, hypervis
 -- Add passthrough instruction for appliance deployments
 ALTER TABLE `cloud`.`vm_template` ADD COLUMN `deploy_as_is` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'True if the template should be deployed with disks and networks as defined by OVF';
 
--- Extend the template details value field
-ALTER TABLE `cloud`.`vm_template_details` MODIFY COLUMN `value` TEXT CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL;
-
 -- Changes to template_view for both deploying multidisk OVA/vApp as is
 DROP VIEW IF EXISTS `cloud`.`template_view`;
 CREATE VIEW `cloud`.`template_view` AS
@@ -475,3 +472,21 @@ CREATE VIEW `cloud`.`storage_pool_view` AS
             AND (`async_job`.`instance_type` = 'StoragePool')
             AND (`async_job`.`job_status` = 0))));
 
+
+CREATE TABLE `cloud`.`template_deploy_as_is_details` (
+  `id` bigint unsigned NOT NULL auto_increment,
+  `template_id` bigint unsigned NOT NULL COMMENT 'template id',
+  `name` varchar(255) NOT NULL,
+  `value` TEXT,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_template_deploy_as_is_details__template_id` FOREIGN KEY `fk_template_deploy_as_is_details__template_id`(`template_id`) REFERENCES `vm_template`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `cloud`.`user_vm_deploy_as_is_details` (
+  `id` bigint unsigned NOT NULL auto_increment,
+  `vm_id` bigint unsigned NOT NULL COMMENT 'virtual machine id',
+  `name` varchar(255) NOT NULL,
+  `value` TEXT,
+  PRIMARY KEY (`id`),
+  CONSTRAINT `fk_user_vm_deploy_as_is_details__vm_id` FOREIGN KEY `fk_user_vm_deploy_as_is_details__vm_id`(`vm_id`) REFERENCES `vm_instance`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
