@@ -37,7 +37,6 @@ import org.apache.cloudstack.managed.context.ManagedContextRunnable;
 import org.apache.cloudstack.storage.datastore.db.PrimaryDataStoreDao;
 import org.apache.cloudstack.storage.datastore.db.StoragePoolDetailsDao;
 import org.apache.cloudstack.storage.datastore.db.StoragePoolVO;
-import org.apache.cloudstack.storage.datastore.util.StorPoolHelper;
 import org.apache.cloudstack.storage.datastore.util.StorPoolUtil;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.log4j.Logger;
@@ -60,7 +59,6 @@ public class StorPoolAbandonObjectsCollector extends ManagerBase implements Conf
     private StoragePoolDetailsDao storagePoolDetailsDao;
 
     private ScheduledExecutorService _volumeTagsUpdateExecutor;
-    private static final String ABANDON_LOG = "/var/log/cloudstack/management/storpool-abandoned-objects";
 
 
     static final ConfigKey<Integer> volumeCheckupTagsInterval = new ConfigKey<Integer>("Advanced", Integer.class,
@@ -91,7 +89,6 @@ public class StorPoolAbandonObjectsCollector extends ManagerBase implements Conf
     private void init() {
         _volumeTagsUpdateExecutor = Executors.newScheduledThreadPool(2,
                 new NamedThreadFactory("StorPoolAbandonObjectsCollector"));
-        StorPoolHelper.appendLogger(log, ABANDON_LOG, "abandon");
         if (volumeCheckupTagsInterval.value() > 0) {
             _volumeTagsUpdateExecutor.scheduleAtFixedRate(new StorPoolVolumesTagsUpdate(),
                     volumeCheckupTagsInterval.value(), volumeCheckupTagsInterval.value(), TimeUnit.SECONDS);

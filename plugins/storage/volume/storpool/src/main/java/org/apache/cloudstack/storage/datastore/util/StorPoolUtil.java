@@ -69,7 +69,9 @@ public class StorPoolUtil {
     private static final Logger log = Logger.getLogger(StorPoolUtil.class);
 
     private static final File spLogFile = new File("/var/log/cloudstack/management/storpool-plugin.log");
-    private static PrintWriter spLogPrinterWriter = spLogFileInitialize();
+    private static final String ABANDON_LOG = "/var/log/cloudstack/management/storpool-abandoned-objects";
+    private static PrintWriter spLogPrinterWriter;
+    private static final Long MAX_STORPOOL_LOGS_FILE_SIZE = 107374182400L;
 
     private static PrintWriter spLogFileInitialize() {
         try {
@@ -87,6 +89,7 @@ public class StorPoolUtil {
             } else {
                 spLogFile.getParentFile().mkdirs();
             }
+            StorPoolHelper.appendLogger(log, ABANDON_LOG, "abandon");
             return new PrintWriter(spLogFile);
         } catch (Exception e) {
             log.info("INITIALIZE SP-LOG_FILE: " + e.getMessage());
@@ -95,10 +98,13 @@ public class StorPoolUtil {
     }
 
     public static void spLog(String fmt, Object... args) {
+        if (StorPoolUtil.spLogPrinterWriter == null) {
+            spLogFileInitialize();
+        }
         String timeStamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,ms").format(Calendar.getInstance().getTime());
         spLogPrinterWriter.println(String.format(timeStamp + " " + fmt, args));
         spLogPrinterWriter.flush();
-        if (spLogFile.length() > 107374182400L) {
+        if (spLogFile.length() > MAX_STORPOOL_LOGS_FILE_SIZE) {
             spLogPrinterWriter.close();
             spLogPrinterWriter = spLogFileInitialize();
         }
